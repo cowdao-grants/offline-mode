@@ -1,7 +1,7 @@
 [profile.default]
 src = "contracts/src"
 out = "contracts/out"
-libs = ["node_modules", "contracts/lib", "../../crates/contracts/solidity"]
+libs = ["node_modules", "contracts/lib", "lib", "../../crates/contracts/solidity"]
 script = "contracts/script"
 
 # Optimizer settings
@@ -22,7 +22,7 @@ remappings = [
     "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/",
     "@openzeppelin/contracts-old/=node_modules/@openzeppelin/contracts-old/",
     "@cowprotocol/contracts/=node_modules/@cowprotocol/contracts/src/contracts/",
-    "@cowprotocol/hooks-trampoline/=hooks-trampoline/src/",
+    "@cowprotocol/hooks-trampoline/=lib/hooks-trampoline/src/",
     "@bleu-services/=crates/contracts/solidity/",
     "@uniswap/v2-core/=node_modules/@uniswap/v2-core/",
     "@uniswap/v2-periphery/=node_modules/@uniswap/v2-periphery/",

@@ -6,7 +6,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { DeploymentConfig, AllAddresses } from './deploy/types';
+import { DeploymentConfig } from './deploy/types';
 import {
   printSection,
   printDeploymentSummary,
@@ -18,7 +18,6 @@ import { deployUniswap } from './deploy/02-deploy-uniswap';
 import { deployCowProtocol } from './deploy/03-deploy-cow-protocol';
 import { deployAuxiliary } from './deploy/04-deploy-auxiliary';
 import { addLiquidity, initializeRouter } from './deploy/05-add-liquidity';
-import { generateConfigs } from './deploy/06-export-addresses';
 
 // ============================================================================
 // CONFIGURATION - Edit these constants as needed
@@ -68,17 +67,6 @@ async function main() {
 
     // Step 6: Initialize Router
     await initializeRouter(config, tokens, uniswap, cowProtocol);
-
-    // Combine all addresses
-    const allAddresses: AllAddresses = {
-      tokens,
-      uniswap,
-      cowProtocol,
-      auxiliary,
-    };
-
-    // Step 7: Generate Configuration Files
-    await generateConfigs(allAddresses);
 
     // Print summary
     printSection('✅ DEPLOYMENT COMPLETE');

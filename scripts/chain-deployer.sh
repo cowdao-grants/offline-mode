@@ -90,7 +90,7 @@ TARGET_BLOCK=12593265
 echo "🔢 Step 2: Setting block number to $TARGET_BLOCK using vm.roll()..."
 echo "📊 Note: This sets the block context for Forge scripts during deployment"
 
-if ! forge script scripts/deploy/00-SetBlockNumber.s.sol --rpc-url http://127.0.0.1:8545 --broadcast --unlocked; then
+if ! forge script contracts/script/SetBlockNumber.s.sol --rpc-url http://127.0.0.1:8545 --broadcast --unlocked; then
     echo "⚠️  Warning: Failed to run SetBlockNumber script, but continuing with deployment..."
 fi
 
