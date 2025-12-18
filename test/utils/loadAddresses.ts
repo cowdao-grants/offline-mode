@@ -95,14 +95,16 @@ function getPairAddress(
 }
 
 /**
- * Load addresses from .env.offline file
- * Falls back to .env.offline in playground directory if not found locally
+ * Load addresses from .env file
+ * Falls back to .env in playground directory if not found locally
  */
 export function loadAddresses(): Addresses {
-  // Try to find .env.offline file
+  // Try to find .env file
   const possiblePaths = [
-    path.join(__dirname, '../../../.env.offline'),
-    path.join(__dirname, '../../../../.env.offline'),
+    path.join(__dirname, '../../.env'),       // test/utils -> root
+    path.join(__dirname, '../../../.env'),     // if nested deeper
+    path.join(__dirname, '../../../../.env'),  // if even deeper
+    path.join(process.cwd(), '.env'),         // from current working directory
   ];
 
   let envFilePath: string | null = null;
@@ -114,7 +116,7 @@ export function loadAddresses(): Addresses {
   }
 
   if (!envFilePath) {
-    throw new Error('.env.offline file not found. Please run deployment first.');
+    throw new Error('.env file not found. Please run deployment first.');
   }
 
   const env = parseEnvFile(envFilePath);
