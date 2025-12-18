@@ -1,0 +1,126 @@
+[profile.default]
+src = "contracts/src"
+out = "contracts/out"
+libs = ["node_modules", "contracts/lib", "../../crates/contracts/solidity"]
+script = "contracts/script"
+
+# Optimizer settings
+solc_version = "0.8.26"
+optimizer = true
+optimizer_runs = 1000
+via_ir = true
+
+# Allow multiple Solidity versions
+auto_detect_solc = true
+solc = "0.8.26"
+
+# EVM version
+evm_version = "cancun"
+
+# Remappings
+remappings = [
+    "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/",
+    "@openzeppelin/contracts-old/=node_modules/@openzeppelin/contracts-old/",
+    "@cowprotocol/contracts/=node_modules/@cowprotocol/contracts/src/contracts/",
+    "@cowprotocol/hooks-trampoline/=hooks-trampoline/src/",
+    "@bleu-services/=crates/contracts/solidity/",
+    "@uniswap/v2-core/=node_modules/@uniswap/v2-core/",
+    "@uniswap/v2-periphery/=node_modules/@uniswap/v2-periphery/",
+    "@uniswap/lib/=node_modules/@uniswap/lib/",
+    "cow-shed/=node_modules/cow-shed/src/",
+    "solmate/=node_modules/solmate/src/",
+    "forge-std/=node_modules/forge-std/src/"
+]
+
+# Filesystem permissions
+fs_permissions = [
+    { access = "read-write", path = "./config" },
+    { access = "read-write", path = "../../configs" },
+    { access = "read-write", path = "../" },
+    { access = "read", path = "../../crates/contracts/solidity" },
+    { access = "read", path = "./contracts/out-uniswap-v2" },
+    { access = "read", path = "./contracts/out-uniswap-v2-periphery" },
+    { access = "read", path = "./contracts/out-cow-protocol" },
+    { access = "read", path = "./contracts/out-cow-shed" },
+    { access = "read", path = "./node_modules" },
+    { access = "read", path = "./node_modules/@uniswap/v2-core/build" },
+    { access = "read", path = "./node_modules/@uniswap/v2-periphery/build" },
+    { access = "read", path = "./node_modules/@cowprotocol/contracts/deployments" },
+    { access = "read", path = "./node_modules/cow-shed" }
+]
+
+# RPC
+[rpc_endpoints]
+localhost = "http://localhost:8545"
+
+# Etherscan is disabled for offline/local development
+# Verification is not needed for local Anvil deployments
+
+# Profile for Uniswap V2 contracts (Solidity 0.5.16)
+[profile.uniswap-v2]
+src = "node_modules/@uniswap/v2-core/contracts"
+out = "contracts/out-uniswap-v2"
+libs = ["node_modules"]
+script = "node_modules/@uniswap/v2-core/contracts"
+test = "node_modules/@uniswap/v2-core/test"
+skip = ["UniswapV2Pair.sol"] # Skip building the pair contract
+solc_version = "0.5.16"
+cache=true
+optimizer = true
+optimizer_runs = 999999
+evm_version = "istanbul"
+
+# Profile for Uniswap V2 Periphery (Solidity 0.6.6)
+[profile.uniswap-v2-periphery]
+src = "node_modules/@uniswap/v2-periphery/contracts"
+out = "contracts/out-uniswap-v2-periphery"
+libs = ["node_modules"]
+script = "node_modules/@uniswap/v2-periphery/contracts"
+test = "node_modules/@uniswap/v2-periphery/test"
+solc_version = "0.6.6"
+optimizer = true
+optimizer_runs = 999999
+evm_version = "istanbul"
+remappings = [
+    "@uniswap/lib/=node_modules/@uniswap/lib/",
+    "@uniswap/v2-core/=node_modules/@uniswap/v2-core/"
+]
+
+# Profile for CoW Protocol (Solidity 0.7.6)
+[profile.cow-protocol]
+src = "node_modules/@cowprotocol/contracts/src/contracts"
+out = "contracts/out-cow-protocol"
+libs = ["node_modules"]
+script = "node_modules/@cowprotocol/contracts/src/contracts"
+solc_version = "0.7.6"
+optimizer = true
+optimizer_runs = 1000000
+via_ir = false
+evm_version = "istanbul"
+remappings = [
+    "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts-old/"
+]
+
+# Profile for CoW Shed (Solidity 0.8.30)
+[profile.cow-shed]
+src = "node_modules/cow-shed/src"
+out = "contracts/out-cow-shed"
+libs = ["node_modules/cow-shed/lib", "node_modules"]
+test = "node_modules/cow-shed/test"
+script = "node_modules/cow-shed/script"
+solc_version = "0.8.30"
+optimizer = true
+optimizer_runs = 1000000
+via_ir = true
+evm_version = "cancun"
+bytecode_hash = "none"
+cbor_metadata = false
+ignored_error_codes = [7576]
+remappings = [
+    "openzeppelin-contracts/contracts/=node_modules/@openzeppelin/contracts/",
+    "solady/=node_modules/solady/src/",
+    "forge-std/=node_modules/forge-std/src/",
+    "src/=node_modules/cow-shed/src/",
+    "test/=node_modules/cow-shed/test/",
+    "script/=node_modules/cow-shed/script/"
+]

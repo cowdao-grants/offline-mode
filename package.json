@@ -1,0 +1,42 @@
+{
+  "name": "cow-protocol-offline-mode",
+  "version": "1.0.0",
+  "description": "CoW Protocol offline development environment with deployed contracts",
+  "scripts": {
+    "start-anvil:fresh": "rm -rf state/anvil-state.json & ./scripts/start-anvil.sh",
+    "deploy:all": "./scripts/deploy-all.sh",
+    "deploy:ts": "npx ts-node scripts/deploy-all.ts",
+    "build": "forge build",
+    "test:cowshed": "npx ts-node test/test-cowshed-order.ts",
+    "test:order": "npx ts-node test/test-playground-order.ts"
+  },
+  "dependencies": {
+    "@cowprotocol/contracts": "^1.6.0",
+    "@cowprotocol/sdk-cow-shed": "^0.2.3",
+    "@openzeppelin/contracts": "^5.0.2",
+    "@openzeppelin/contracts-old": "npm:@openzeppelin/contracts@^3.4.0",
+    "@uniswap/lib": "^4.0.1-alpha",
+    "@uniswap/v2-core": "^1.0.1",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0",
+    "cow-shed": "github:cowdao-grants/cow-shed",
+    "forge-std": "github:foundry-rs/forge-std",
+    "solady": "github:Vectorized/solady",
+    "solmate": "github:transmissions11/solmate"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "ethers": "^6.9.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.0"
+  },
+  "keywords": [
+    "cow-protocol",
+    "ethereum",
+    "foundry",
+    "anvil",
+    "offline",
+    "development"
+  ],
+  "author": "CoW Protocol Team",
+  "license": "MIT"
+}
