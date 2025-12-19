@@ -1,7 +1,7 @@
 [profile.default]
 src = "contracts/src"
 out = "contracts/out"
-libs = ["node_modules", "contracts/lib", "lib", "../../crates/contracts/solidity"]
+libs = ["node_modules", "contracts/lib", "modules", "../../modules/services/crates/contracts/solidity"]
 script = "contracts/script"
 
 # Optimizer settings
@@ -22,8 +22,8 @@ remappings = [
     "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/",
     "@openzeppelin/contracts-old/=node_modules/@openzeppelin/contracts-old/",
     "@cowprotocol/contracts/=node_modules/@cowprotocol/contracts/src/contracts/",
-    "@cowprotocol/hooks-trampoline/=lib/hooks-trampoline/src/",
-    "@bleu-services/=crates/contracts/solidity/",
+    "@cowprotocol/hooks-trampoline/=modules/hooks-trampoline/src/",
+    "@bleu-services/=modules/services/crates/contracts/solidity/",
     "@uniswap/v2-core/=node_modules/@uniswap/v2-core/",
     "@uniswap/v2-periphery/=node_modules/@uniswap/v2-periphery/",
     "@uniswap/lib/=node_modules/@uniswap/lib/",
@@ -37,7 +37,7 @@ fs_permissions = [
     { access = "read-write", path = "./config" },
     { access = "read-write", path = "../../configs" },
     { access = "read-write", path = "../" },
-    { access = "read", path = "../../crates/contracts/solidity" },
+    { access = "read", path = "../../modules/services/crates/contracts/solidity" },
     { access = "read", path = "./contracts/out-uniswap-v2" },
     { access = "read", path = "./contracts/out-uniswap-v2-periphery" },
     { access = "read", path = "./contracts/out-cow-protocol" },

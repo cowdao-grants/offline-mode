@@ -107,7 +107,7 @@ services:
 
   db-migrations:
     build:
-      context: ./services
+      context: ./modules/services
       target: migrations
       dockerfile: ./playground/Dockerfile
     restart: on-failure
@@ -119,7 +119,7 @@ services:
 
   orderbook:
     build:
-      context: ./services
+      context: ./modules/services
       target: localdev
       dockerfile: ./playground/Dockerfile
     restart: always
@@ -159,7 +159,7 @@ services:
       - DISABLE_ORDER_FILTERING=true
       - SKIP_EVENT_SYNC=false
     volumes:
-      - ./services:/src
+      - ./modules/services:/src
     depends_on:
       - db-migrations
       - chain
@@ -178,7 +178,7 @@ services:
 
   autopilot:
     build:
-      context: ./services
+      context: ./modules/services
       target: localdev
       dockerfile: ./playground/Dockerfile
     restart: always
@@ -202,7 +202,7 @@ services:
       - DRIVERS=baseline|http://driver/baseline|0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
       - OFFLINE_MODE=true
     volumes:
-      - ./services:/src
+      - ./modules/services:/src
     depends_on:
       chain-deployer:
         condition: service_healthy
@@ -218,7 +218,7 @@ services:
 
   driver:
     build:
-      context: ./services
+      context: ./modules/services
       target: localdev
       dockerfile: ./playground/Dockerfile
     restart: always
@@ -240,7 +240,7 @@ services:
       - ADDR=0.0.0.0:80
       - RUST_LOG=driver=debug,shared=trace
     volumes:
-      - ./services:/src
+      - ./modules/services:/src
       - ./configs:/workspace/configs
     ports:
       - 9000:80 # API & metrics
@@ -254,7 +254,7 @@ services:
   # baseline (solver engine)
   baseline:
     build:
-      context: ./services
+      context: ./modules/services
       target: localdev
       dockerfile: ./playground/Dockerfile
     restart: always
@@ -275,7 +275,7 @@ services:
       - ADDR=0.0.0.0:80
       - LOG=solvers=trace,shared=trace
     volumes:
-      - ./services:/src
+      - ./modules/services:/src
       - ./configs:/workspace/configs
     ports:
       - 9001:80 # API & metrics
