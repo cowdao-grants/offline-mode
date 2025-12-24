@@ -7,8 +7,6 @@ import {
   runForgeScript,
   readBroadcastResult,
   extractAddress,
-  castCall,
-  castSend,
   printSection,
   printDeployment,
 } from './utils';

@@ -98,7 +98,7 @@ export async function deployUniswap(
 
   console.log('  Deploying Router to temporary address with mainnet factory:', mainnetFactory);
   const routerDeployOutput = execSync(
-    `cast send --rpc-url ${config.rpcUrl} --private-key ${config.deployerPrivateKey} --create ${routerBytecode} --json`,
+    `FOUNDRY_DISABLE_NIGHTLY_WARNING=1 cast send --rpc-url ${config.rpcUrl} --private-key ${config.deployerPrivateKey} --create ${routerBytecode} --json`,
     { encoding: 'utf8' }
   );
   const tempRouterAddress = JSON.parse(routerDeployOutput).contractAddress;

@@ -23,10 +23,11 @@ export async function deployAuxiliary(
   printSection('STEP 3.5: Deploying Balances Helper Contract');
 
   const mainnetBalances = '0x3e8C6De9510e7ECad902D005DE3Ab52f35cF4f1b';
+  const mainnetRpcUrl = process.env.MAINNET_RPC_URL || 'https://eth.llamarpc.com';
 
   console.log('Fetching Balances Helper bytecode from mainnet...');
   const balancesBytecode = execSync(
-    `cast code ${mainnetBalances} --rpc-url https://eth.llamarpc.com`,
+    `cast code ${mainnetBalances} --rpc-url ${mainnetRpcUrl}`,
     { encoding: 'utf8' }
   ).trim();
 
@@ -53,7 +54,7 @@ export async function deployAuxiliary(
 
   console.log('Fetching Signatures bytecode from mainnet...');
   const signaturesBytecode = execSync(
-    `cast code ${mainnetSignatures} --rpc-url https://eth.llamarpc.com`,
+    `cast code ${mainnetSignatures} --rpc-url ${mainnetRpcUrl}`,
     { encoding: 'utf8' }
   ).trim();
 

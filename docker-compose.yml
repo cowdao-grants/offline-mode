@@ -217,6 +217,27 @@ services:
       - 9589:9589 # metrics
       - 6670:6669 # tokio console
 
+  # Watch-tower service for ComposableCow conditional orders
+  watch-tower:
+    build:
+      context: ./modules/watch-tower
+      dockerfile: Dockerfile
+    restart: always
+    command: ["run", "--config-path", "/config.json"]
+    volumes:
+      - ./config/watch-tower-config.json:/config.json
+    depends_on:
+      chain-deployer:
+        condition: service_healthy
+      orderbook:
+        condition: service_healthy
+      chain:
+        condition: service_healthy
+    environment:
+      - RUST_LOG=info,watch_tower=debug
+      - LOG_LEVEL=DEBUG
+      - ORDERBOOK_API_URL=http://orderbook:80
+
   driver:
     build:
       context: ./modules/services

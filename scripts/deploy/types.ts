@@ -50,11 +50,33 @@ export interface AuxiliaryAddresses {
   };
 }
 
+export interface ComposableCowAddresses {
+  composableCoW: string;
+  extensibleFallbackHandler: string;
+  currentBlockTimestampFactory: string;
+  conditionalOrders: {
+    goodAfterTime: string;
+    perpetualStableSwap: string;
+    stopLoss: string;
+    twap: string;
+    tradeAboveThreshold: string;
+  };
+}
+
+export interface SafeAddresses {
+  singleton: string;
+  proxyFactory: string;
+  compatibilityFallbackHandler: string;
+  testUserSafe: string;
+}
+
 export interface AllAddresses {
   tokens: TokenAddresses;
   uniswap: UniswapAddresses;
   cowProtocol: CowProtocolAddresses;
   auxiliary: AuxiliaryAddresses;
+  composableCow: ComposableCowAddresses;
+  safe?: SafeAddresses;
 }
 
 export interface ForgeTransaction {

@@ -18,6 +18,8 @@ import { deployUniswap } from './deploy/02-deploy-uniswap';
 import { deployCowProtocol } from './deploy/03-deploy-cow-protocol';
 import { deployAuxiliary } from './deploy/04-deploy-auxiliary';
 import { addLiquidity, initializeRouter } from './deploy/05-add-liquidity';
+import { deployComposableCow } from './deploy/06-deploy-composable-cow';
+import { deploySafe } from './deploy/07-deploy-safe';
 
 // ============================================================================
 // CONFIGURATION - Edit these constants as needed
@@ -67,6 +69,12 @@ async function main() {
 
     // Step 6: Initialize Router
     await initializeRouter(config, tokens, uniswap, cowProtocol);
+
+    // Step 7: Deploy ComposableCow
+    const composableCow = await deployComposableCow(config);
+
+    // Step 8: Deploy Safe Wallet Infrastructure
+    const safe = await deploySafe(config);
 
     // Print summary
     printSection('✅ DEPLOYMENT COMPLETE');

@@ -8,7 +8,11 @@
     "deploy:ts": "npx ts-node scripts/deploy-all.ts",
     "build": "forge build",
     "test:cowshed": "npx ts-node test/test-cowshed-order.ts",
-    "test:order": "npx ts-node test/test-playground-order.ts"
+    "test:order": "npx ts-node test/test-playground-order.ts",
+    "test:composable-cow": "npx ts-node test/composable-cow/twap.test.ts",
+    "test:composable-cow:twap": "npx ts-node test/composable-cow/twap.test.ts",
+    "test:composable-cow:stop-loss": "npx ts-node test/composable-cow/stop-loss.test.ts",
+    "test:composable-cow:good-after-time": "npx ts-node test/composable-cow/good-after-time.test.ts"
   },
   "dependencies": {
     "@cowprotocol/contracts": "^1.6.0",
@@ -19,6 +23,7 @@
     "@uniswap/v2-core": "^1.0.1",
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "cow-shed": "github:cowdao-grants/cow-shed",
+    "dotenv": "^17.2.3",
     "forge-std": "github:foundry-rs/forge-std",
     "solady": "github:Vectorized/solady",
     "solmate": "github:transmissions11/solmate"
