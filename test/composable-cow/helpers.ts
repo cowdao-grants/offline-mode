@@ -29,6 +29,14 @@ export const ADDRESSES = {
   tradeAboveThreshold: process.env.TRADE_ABOVE_THRESHOLD_ADDRESS!,
   // COWShed
   cowShedFactory: process.env.COWSHED_COMPOSABLE_COW_FACTORY_ADDRESS!,
+  // Mock Chainlink Oracles
+  oracles: {
+    wethUsd: process.env.WETH_USD_ORACLE_ADDRESS!,
+    daiUsd: process.env.DAI_USD_ORACLE_ADDRESS!,
+    usdcUsd: process.env.USDC_USD_ORACLE_ADDRESS!,
+    usdtUsd: process.env.USDT_USD_ORACLE_ADDRESS!,
+    gnoUsd: process.env.GNO_USD_ORACLE_ADDRESS!,
+  },
 };
 
 // ABIs

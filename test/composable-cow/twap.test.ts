@@ -6,13 +6,15 @@
  * using CoW Protocol's ComposableCow conditional orders framework.
  *
  * TWAP Order Flow:
- * - User creates 3 TWAP orders with different amounts (8, 10, 12 DAI)
- * - Each order is split into 2 parts with 20 seconds between parts
- * - Orders start at staggered times (10 seconds apart)
- * - The orders are registered in ComposableCoW contract
+ * - User creates 1 TWAP order to sell 30 DAI for WETH
+ * - Order is split into 3 parts (10 DAI each) with 5 minutes between parts
+ * - Each part is valid for 5 minutes (300 seconds)
+ * - Order starts 10 seconds after creation
+ * - The order is registered in ComposableCoW contract
  * - Watchtower monitors and posts each part to the orderbook when ready
+ * - Each part gets settled individually through CoW Protocol
  *
- * Run with: npm run test:composable-cow
+ * Run with: npm run test:composable-cow:twap
  */
 
 import { ethers } from 'ethers';
@@ -136,12 +138,11 @@ async function main() {
   console.log('STEP 1: Setup Safe Wallet with DAI');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-  // We'll create 2 separate TWAP orders with different amounts
+  // We'll create 1 TWAP order with 3 parts
   const orderAmounts = [
-    ethers.parseEther('10'),  // Order 1: 10 DAI
-    ethers.parseEther('12'),  // Order 2: 12 DAI
+    ethers.parseEther('30'),  // Order 1: 30 DAI (split into 3 parts of 10 DAI each)
   ];
-  const totalSellAmount = orderAmounts.reduce((sum, amount) => sum + amount, 0n); // 22 DAI total
+  const totalSellAmount = orderAmounts.reduce((sum, amount) => sum + amount, 0n); // 30 DAI total
 
   let daiBalance = await dai.balanceOf(ADDRESSES.safeWallet);
   console.log(`   Safe Wallet DAI Balance: ${ethers.formatEther(daiBalance)} DAI`);
@@ -238,15 +239,14 @@ async function main() {
   if (!currentBlock) throw new Error('Could not get current block');
   const currentTime = currentBlock.timestamp;
 
-  // Create 2 separate TWAP orders with different amounts
-  // Each order has n=2 (2 parts) with t=90s between parts
-  // AUTO mode sets validTo ≈ t0 + t, so t=90 gives 90s validity
-  // Need buffer above 60s minimum because watch-tower posts after t0
+  // Create 1 TWAP order with 3 parts
+  // Each part has 5 minutes (300s) between them
+  // span=300 means each part is valid for 5 minutes (span must be ≤ t)
   // TWAP requires at least 2 parts (n >= 2)
   // minPartLimit is proportional to the PART sell amount (not total)
   const twapConfigs = orderAmounts.map((amount, index) => {
-    const minWethPerDai = 0.0004; // Below market rate (0.0005) to ensure solver profit
-    const numParts = 2n; // Split each order into 2 parts
+    const minWethPerDai = 0.00027; // Below market rate (0.000333 for 3000 DAI/WETH) to ensure solver profit
+    const numParts = 3n; // Split order into 3 parts
     const partSellAmount = amount / numParts;
     const partDaiAmount = Number(ethers.formatEther(partSellAmount));
     const minPartLimit = ethers.parseEther((partDaiAmount * minWethPerDai).toFixed(18));
@@ -255,30 +255,28 @@ async function main() {
       sellToken: ADDRESSES.dai,
       buyToken: ADDRESSES.weth,
       receiver: ADDRESSES.safeWallet, // WETH goes to Safe wallet
-      partSellAmount: partSellAmount.toString(), // Each part is half of total
+      partSellAmount: partSellAmount.toString(), // Each part is 1/3 of total
       minPartLimit: minPartLimit.toString(), // Proportional minimum WETH per part
-      t0: currentTime + 10 + (index * 20), // Stagger order start times by 20 seconds
-      n: 2, // 2 parts per order (4 total parts across 2 orders)
-      t: 90, // 90 seconds between parts - AUTO uses this for validTo (with 30s buffer)
-      span: 0, // AUTO mode - will set validTo ≈ t0 + t (90s)
+      t0: currentTime + 10, // Start 10 seconds from now
+      n: 3, // 3 parts total
+      t: 300, // 5 minutes (300 seconds) between parts
+      span: 300, // Each part is valid for 5 minutes (must be ≤ t)
       appData: ethers.ZeroHash,
     };
   });
 
-  console.log('   TWAP Orders Configuration:');
+  console.log('   TWAP Order Configuration:');
   console.log(`   Sell Token: DAI (${ADDRESSES.dai})`);
   console.log(`   Buy Token: WETH (${ADDRESSES.weth})`);
   console.log(`   Total Amount: ${ethers.formatEther(totalSellAmount)} DAI`);
-  console.log(`   Number of Orders: ${twapConfigs.length}`);
   console.log('');
-  twapConfigs.forEach((config, index) => {
+  twapConfigs.forEach((config) => {
     const totalPerOrder = BigInt(config.partSellAmount) * BigInt(config.n);
-    console.log(`   Order ${index + 1}:`);
-    console.log(`     Total: ${ethers.formatEther(totalPerOrder)} DAI (${config.n} parts of ${ethers.formatEther(config.partSellAmount)} DAI each)`);
-    console.log(`     Min per Part: ${ethers.formatEther(config.minPartLimit)} WETH`);
-    console.log(`     Start Time: ${new Date(config.t0 * 1000).toISOString()} (${config.t0})`);
-    console.log(`     Interval: ${config.t} seconds between parts`);
-    console.log(`     Span: ${config.span === 0 ? 'AUTO (handler calculates validity)' : `${config.span} seconds (${Math.floor(config.span / 60)} minutes)`}`);
+    console.log(`   Total: ${ethers.formatEther(totalPerOrder)} DAI (${config.n} parts of ${ethers.formatEther(config.partSellAmount)} DAI each)`);
+    console.log(`   Min per Part: ${ethers.formatEther(config.minPartLimit)} WETH`);
+    console.log(`   Start Time: ${new Date(config.t0 * 1000).toISOString()} (${config.t0})`);
+    console.log(`   Interval: ${config.t} seconds between parts`);
+    console.log(`   Span: ${config.span === 0 ? 'AUTO (handler calculates validity)' : `${config.span} seconds (${Math.floor(config.span / 60)} minutes)`}`);
   });
   console.log('');
 
@@ -297,12 +295,12 @@ async function main() {
   // Store order hashes for debugging
   const createdOrderHashes: string[] = [];
 
-  // Create all 3 TWAP orders
+  // Create TWAP order
   for (let i = 0; i < twapConfigs.length; i++) {
     const twapConfig = twapConfigs[i];
 
     const totalPerOrder = BigInt(twapConfig.partSellAmount) * BigInt(twapConfig.n);
-    console.log(`   Creating conditional order ${i + 1}/${twapConfigs.length}...`);
+    console.log(`   Creating conditional order...`);
     console.log(`   Total: ${ethers.formatEther(totalPerOrder)} DAI (${twapConfig.n} parts × ${ethers.formatEther(twapConfig.partSellAmount)} DAI)`);
     console.log(`   Min per Part: ${ethers.formatEther(twapConfig.minPartLimit)} WETH`);
     console.log(`   Interval: ${twapConfig.t}s between parts`);
@@ -359,14 +357,14 @@ async function main() {
       // Create the order from the Safe wallet (makes Safe the owner)
       const createTx = await composableCoWAsSafe.create(conditionalOrderParams, true);
       const receipt = await createTx.wait();
-      console.log(`   ✅ Order ${i + 1} created in block ${receipt?.blockNumber}`);
+      console.log(`   ✅ Order created in block ${receipt?.blockNumber}`);
       console.log(`   Order Hash: ${orderHash}`);
       console.log('');
 
       // Stop impersonating
       await provider.send('anvil_stopImpersonatingAccount', [ADDRESSES.safeWallet]);
     } catch (error: any) {
-      console.error(`   ❌ Failed to create conditional order ${i + 1}:`);
+      console.error(`   ❌ Failed to create conditional order:`);
       console.error(`   Error: ${error.message}`);
       if (error.data) {
         console.error(`   Data: ${error.data}`);
@@ -380,12 +378,12 @@ async function main() {
   }
 
   console.log('');
-  console.log(`   ✅ All ${twapConfigs.length} conditional orders created successfully`);
+  console.log(`   ✅ Conditional order created successfully`);
   console.log(`   ℹ️  Order owner: ${ADDRESSES.safeWallet} (Safe Wallet)`);
   console.log('');
-  console.log('   📋 Order Hashes (for debugging):');
-  createdOrderHashes.forEach((hash, index) => {
-    console.log(`   Order ${index + 1}: ${hash}`);
+  console.log('   📋 Order Hash (for debugging):');
+  createdOrderHashes.forEach((hash) => {
+    console.log(`   ${hash}`);
   });
   console.log('');
 
@@ -423,7 +421,7 @@ async function main() {
 
   console.log('   Waiting for watchtower to pick up TWAP orders...');
   console.log('   (This may take some time as the watchtower polls periodically)');
-  console.log('   (Checking balances every 10 seconds for up to 10 minutes)\n');
+  console.log('   (Checking balances every 10 seconds for up to 15 minutes)\n');
 
   const initialDaiBalance = await dai.balanceOf(ADDRESSES.safeWallet);
   const initialWethBalance = await weth.balanceOf(ADDRESSES.safeWallet);
@@ -433,14 +431,14 @@ async function main() {
   console.log(`   WETH: ${ethers.formatEther(initialWethBalance)}`);
   console.log('');
 
-  // We have 3 TWAP orders, each with 3 parts = 9 total discrete orders
+  // We have 1 TWAP order with 3 parts = 3 total discrete orders
   const totalParts = twapConfigs.reduce((sum, config) => sum + config.n, 0);
   let partsExecuted = 0;
   let lastDaiBalance = initialDaiBalance;
-  const maxWaitTime = 600; // 10 minutes
+  const maxWaitTime = 900; // 15 minutes
   let elapsed = 0;
 
-  console.log(`   Expected: ${totalParts} parts total (${twapConfigs.length} orders × ${twapConfigs[0].n} parts each)`);
+  console.log(`   Expected: ${totalParts} parts total (${twapConfigs.length} order × ${twapConfigs[0].n} parts each)`);
   console.log('');
 
   while (elapsed < maxWaitTime && partsExecuted < totalParts) {
@@ -492,10 +490,10 @@ async function main() {
     console.log(`   ✅ SUCCESS: ${partsExecuted}/${totalParts} TWAP parts executed!`);
     console.log('');
     console.log('   Summary:');
-    console.log(`   - ${twapConfigs.length} ComposableCow TWAP orders created successfully`);
-    console.log(`   - Each order split into ${twapConfigs[0].n} parts`);
+    console.log(`   - ComposableCow TWAP order created successfully`);
+    console.log(`   - Order split into ${twapConfigs[0].n} parts`);
     console.log('   - Watchtower detected and processed TWAP order parts');
-    console.log('   - Orders settled through CoW Protocol');
+    console.log('   - Order settled through CoW Protocol');
     console.log('');
 
     if (partsExecuted < totalParts) {

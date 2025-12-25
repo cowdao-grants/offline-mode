@@ -267,8 +267,8 @@ async function main() {
   console.log('STEP 7: Sign Order with EIP-712 (User EOA)');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-  // Apply surplus (5% to ensure profitability)
-  const surplusPercent = 5;
+  // Apply surplus (3% to ensure profitability with deep liquidity)
+  const surplusPercent = 3;
   const surplusMultiplier = 1 - (surplusPercent / 100);
   const adjustedBuyAmount = (BigInt(quote.quote.buyAmount) * BigInt(Math.floor(surplusMultiplier * 10000)) / 10000n).toString();
 

@@ -13,6 +13,7 @@ import {
   printOutputFiles,
   printNextSteps,
 } from './deploy/utils';
+import { deployMulticall3 } from './deploy/00-deploy-multicall3';
 import { deployTokens } from './deploy/01-deploy-tokens';
 import { deployUniswap } from './deploy/02-deploy-uniswap';
 import { deployCowProtocol } from './deploy/03-deploy-cow-protocol';
@@ -20,6 +21,7 @@ import { deployAuxiliary } from './deploy/04-deploy-auxiliary';
 import { addLiquidity, initializeRouter } from './deploy/05-add-liquidity';
 import { deployComposableCow } from './deploy/06-deploy-composable-cow';
 import { deploySafe } from './deploy/07-deploy-safe';
+import { deployMockOracles } from './deploy/08-deploy-mock-oracles';
 
 // ============================================================================
 // CONFIGURATION - Edit these constants as needed
@@ -52,6 +54,9 @@ async function main() {
   fs.mkdirSync(stateDir, { recursive: true });
 
   try {
+    // Step 0: Deploy Multicall3
+    await deployMulticall3(config);
+
     // Step 1: Deploy Tokens
     const tokens = await deployTokens(config);
 
@@ -75,6 +80,64 @@ async function main() {
 
     // Step 8: Deploy Safe Wallet Infrastructure
     const safe = await deploySafe(config);
+
+    // Step 9: Deploy Mock Chainlink Oracles
+    const mockOracles = await deployMockOracles(config);
+
+    // Step 10: Save oracle addresses to .env file
+    printSection('STEP 10: Saving Oracle Addresses to .env');
+    const envPath = path.join(__dirname, '../.env');
+
+    // Read current .env file
+    let envContent = '';
+    if (fs.existsSync(envPath)) {
+      envContent = fs.readFileSync(envPath, 'utf8');
+    }
+
+    // Remove old oracle address lines if they exist
+    const oracleKeys = [
+      'WETH_USD_ORACLE_ADDRESS',
+      'DAI_USD_ORACLE_ADDRESS',
+      'USDC_USD_ORACLE_ADDRESS',
+      'USDT_USD_ORACLE_ADDRESS',
+      'GNO_USD_ORACLE_ADDRESS',
+    ];
+
+    const envLines = envContent.split('\n').filter(line => {
+      const key = line.split('=')[0].trim();
+      return !oracleKeys.includes(key);
+    });
+
+    // Append new oracle addresses
+    envLines.push('');
+    envLines.push('# =============================================================================');
+    envLines.push('# Mock Chainlink Oracles (Deployed)');
+    envLines.push('# =============================================================================');
+    envLines.push(`WETH_USD_ORACLE_ADDRESS=${mockOracles.wethUsdOracle}`);
+    envLines.push(`DAI_USD_ORACLE_ADDRESS=${mockOracles.daiUsdOracle}`);
+    envLines.push(`USDC_USD_ORACLE_ADDRESS=${mockOracles.usdcUsdOracle}`);
+    envLines.push(`USDT_USD_ORACLE_ADDRESS=${mockOracles.usdtUsdOracle}`);
+    envLines.push(`GNO_USD_ORACLE_ADDRESS=${mockOracles.gnoUsdOracle}`);
+
+    // Write back to .env
+    fs.writeFileSync(envPath, envLines.join('\n'));
+
+    console.log('✅ Oracle addresses saved to .env');
+    console.log('');
+
+    // Also save Safe address to .env
+    if (!envContent.includes('TEST_USER_SAFE_ADDRESS')) {
+      const safeEnvLines = [
+        '',
+        '# =============================================================================',
+        '# Test Safe Wallet',
+        '# =============================================================================',
+        `TEST_USER_SAFE_ADDRESS=${safe.testUserSafe}`,
+      ];
+      fs.appendFileSync(envPath, safeEnvLines.join('\n'));
+      console.log('✅ Test Safe address saved to .env');
+      console.log('');
+    }
 
     // Print summary
     printSection('✅ DEPLOYMENT COMPLETE');

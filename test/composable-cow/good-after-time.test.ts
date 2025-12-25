@@ -1,4 +1,4 @@
-// WIP
+// WIP: This type of order is not settled without an specific type of solver running, specialized in conditional orders, check @docs/good-after-time-requirements.md
 import { ethers } from 'ethers';
 import {
   CONFIG,
@@ -104,21 +104,18 @@ async function main() {
   const validTo = currentTime + 3600; // Valid for 1 hour from now
 
   /*
-   * Good After Time Order Data Structure:
+   * Good After Time Order Data Structure (CORRECT):
    * struct Data {
    *   IERC20 sellToken;
    *   IERC20 buyToken;
    *   address receiver;
    *   uint256 sellAmount;
-   *   uint256 buyAmount;
-   *   uint32 validTo;
+   *   uint256 minSellBalance;
+   *   uint256 startTime;  // The "good after" time
+   *   uint256 endTime;
+   *   bool allowPartialFill;
+   *   bytes priceCheckerPayload;
    *   bytes32 appData;
-   *   uint256 feeAmount;
-   *   bytes32 kind;  // sell or buy
-   *   bool partiallyFillable;
-   *   bytes32 sellTokenBalance;
-   *   bytes32 buyTokenBalance;
-   *   uint256 validFrom;  // The "good after" time
    * }
    */
 
@@ -127,60 +124,52 @@ async function main() {
     buyToken: ADDRESSES.weth,
     receiver: SAFE_WALLET,
     sellAmount: sellAmount.toString(),
-    buyAmount: ethers.parseEther('0.020').toString(), // Minimum 0.020 WETH (0.0004 WETH/DAI rate, below market 0.0005)
-    validTo: validTo,
+    minSellBalance: 0, // No minimum balance check
+    startTime: validFrom,
+    endTime: validTo,
+    allowPartialFill: false,
+    priceCheckerPayload: '0x', // Empty bytes - no price validation
     appData: ethers.ZeroHash,
-    feeAmount: 0,
-    kind: ethers.id('sell').slice(0, 66), // bytes32 for "sell"
-    partiallyFillable: false,
-    sellTokenBalance: ethers.id('erc20').slice(0, 66), // bytes32 for "erc20"
-    buyTokenBalance: ethers.id('erc20').slice(0, 66),
-    validFrom: validFrom,
   };
 
   console.log('   Good After Time Configuration:');
   console.log(`   Sell Token: DAI (${goodAfterTimeConfig.sellToken})`);
   console.log(`   Buy Token: WETH (${goodAfterTimeConfig.buyToken})`);
   console.log(`   Sell Amount: ${ethers.formatEther(sellAmount)} DAI`);
-  console.log(`   Min Buy Amount: ${ethers.formatEther(goodAfterTimeConfig.buyAmount)} WETH`);
-  console.log(`   Valid From: ${new Date(validFrom * 1000).toISOString()} (immediately valid)`);
-  console.log(`   Valid To: ${new Date(validTo * 1000).toISOString()}`);
+  console.log(`   Min Sell Balance: ${goodAfterTimeConfig.minSellBalance}`);
+  console.log(`   Start Time: ${new Date(validFrom * 1000).toISOString()} (immediately valid)`);
+  console.log(`   End Time: ${new Date(validTo * 1000).toISOString()}`);
+  console.log(`   Allow Partial Fill: ${goodAfterTimeConfig.allowPartialFill}`);
   console.log('');
 
   // Step 3: Encode Good After Time Data and Create Conditional Order
   printSection('STEP 3: Create Conditional Order in ComposableCow');
 
-  // ABI encode the good-after-time data struct
+  // ABI encode the good-after-time data struct (CORRECT ORDER)
   const goodAfterTimeDataEncoded = ethers.AbiCoder.defaultAbiCoder().encode(
     [
       'address', // sellToken
       'address', // buyToken
       'address', // receiver
       'uint256', // sellAmount
-      'uint256', // buyAmount
-      'uint32',  // validTo
+      'uint256', // minSellBalance
+      'uint256', // startTime
+      'uint256', // endTime
+      'bool',    // allowPartialFill
+      'bytes',   // priceCheckerPayload
       'bytes32', // appData
-      'uint256', // feeAmount
-      'bytes32', // kind
-      'bool',    // partiallyFillable
-      'bytes32', // sellTokenBalance
-      'bytes32', // buyTokenBalance
-      'uint256', // validFrom
     ],
     [
       goodAfterTimeConfig.sellToken,
       goodAfterTimeConfig.buyToken,
       goodAfterTimeConfig.receiver,
       goodAfterTimeConfig.sellAmount,
-      goodAfterTimeConfig.buyAmount,
-      goodAfterTimeConfig.validTo,
+      goodAfterTimeConfig.minSellBalance,
+      goodAfterTimeConfig.startTime,
+      goodAfterTimeConfig.endTime,
+      goodAfterTimeConfig.allowPartialFill,
+      goodAfterTimeConfig.priceCheckerPayload,
       goodAfterTimeConfig.appData,
-      goodAfterTimeConfig.feeAmount,
-      goodAfterTimeConfig.kind,
-      goodAfterTimeConfig.partiallyFillable,
-      goodAfterTimeConfig.sellTokenBalance,
-      goodAfterTimeConfig.buyTokenBalance,
-      goodAfterTimeConfig.validFrom,
     ]
   );
 

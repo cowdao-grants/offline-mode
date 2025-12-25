@@ -83,12 +83,12 @@ export async function deployTokens(config: DeploymentConfig): Promise<TokenAddre
   console.log('');
   console.log('Minting tokens to deployer...');
 
-  // Token supply constants (matching DeployTokens.s.sol)
-  const WETH_SUPPLY = '1000000000000000000000'; // 1,000 WETH (18 decimals)
-  const USDC_SUPPLY = '1000000000000'; // 1 million USDC (6 decimals)
-  const DAI_SUPPLY = '1000000000000000000000000'; // 1 million DAI (18 decimals)
-  const USDT_SUPPLY = '1000000000000'; // 1 million USDT (6 decimals)
-  const GNO_SUPPLY = '1000000000000000000000000'; // 1 million GNO (18 decimals)
+  // Token supply constants - sufficient for deep liquidity pools
+  const WETH_SUPPLY = '5000000000000000000000'; // 5,000 WETH (18 decimals) - enough for 4 pools @ 1000 each
+  const USDC_SUPPLY = '15000000000000'; // 15 million USDC (6 decimals) - enough for deep liquidity
+  const DAI_SUPPLY = '15000000000000000000000000'; // 15 million DAI (18 decimals) - enough for deep liquidity
+  const USDT_SUPPLY = '15000000000000'; // 15 million USDT (6 decimals) - enough for deep liquidity
+  const GNO_SUPPLY = '100000000000000000000000'; // 100,000 GNO (18 decimals) - enough for deep liquidity
 
   // Wrap ETH to WETH
   console.log('  Wrapping ETH to WETH...');

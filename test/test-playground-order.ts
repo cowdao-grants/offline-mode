@@ -85,7 +85,7 @@ Options:
   --sellAmount <AMOUNT>     Amount to sell (e.g., 10e18, 1000e6) - mutually exclusive with --buyAmount
   --buyAmount <AMOUNT>      Amount to buy (e.g., 10e18, 1000e6) - mutually exclusive with --sellAmount
   --from <PRIVATE_KEY>      Trader private key (will be used as sender and receiver)
-  --surplus <PERCENT>       Surplus percentage to add (e.g., 2 for 2% surplus, default: 2)
+  --surplus <PERCENT>       Surplus percentage to add (e.g., 3 for 3% surplus, default: 3)
   -h, --help                Show this help message
 
 Examples:
@@ -98,7 +98,7 @@ Examples:
 function parseArgs(): ParsedArgs {
   const args = process.argv.slice(2);
   const parsed: Partial<ParsedArgs> = {
-    surplusPercent: 2, // Default 2% surplus
+    surplusPercent: 3, // Default 3% surplus for deep liquidity pools
   };
 
   for (let i = 0; i < args.length; i++) {

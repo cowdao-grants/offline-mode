@@ -110,38 +110,41 @@ async function main() {
   printSection('STEP 2: Create Stop-Loss Order Parameters');
 
   /*
-   * Stop-Loss Order Data Structure:
+   * Stop-Loss Order Data Structure (CORRECT ORDER):
    * struct Data {
-   *   IERC20 sellToken;
-   *   IERC20 buyToken;
-   *   address receiver;
-   *   uint256 sellAmount;
-   *   uint256 buyAmount;  // Strike price (minimum to receive)
-   *   bytes32 appData;
-   *   uint256 maxTimeSinceLastOracleUpdate;
-   *   bool isSellOrder;
-   *   bool isPartiallyFillable;
-   *   uint32 validityBucketSeconds;
-   *   address sellTokenPriceOracle;
-   *   address buyTokenPriceOracle;
-   *   int256 strike;  // Price threshold
+   *   IERC20 sellToken;                           // 1
+   *   IERC20 buyToken;                            // 2
+   *   uint256 sellAmount;                         // 3
+   *   uint256 buyAmount;                          // 4
+   *   bytes32 appData;                            // 5
+   *   address receiver;                           // 6
+   *   bool isSellOrder;                           // 7
+   *   bool isPartiallyFillable;                   // 8
+   *   uint32 validTo;                             // 9
+   *   IAggregatorV3Interface sellTokenPriceOracle;// 10
+   *   IAggregatorV3Interface buyTokenPriceOracle; // 11
+   *   int256 strike;                              // 12
+   *   uint256 maxTimeSinceLastOracleUpdate;       // 13
    * }
    */
+
+  const currentTime = await getCurrentTimestamp(provider);
+  const validTo = currentTime + 3600; // Valid for 1 hour
 
   const stopLossConfig = {
     sellToken: ADDRESSES.weth,
     buyToken: ADDRESSES.dai,
-    receiver: SAFE_WALLET,
     sellAmount: sellAmount.toString(),
-    buyAmount: ethers.parseEther('1800').toString(), // Minimum 1800 DAI (below market rate of 2000 DAI/WETH for solver profit)
+    buyAmount: ethers.parseEther('2400').toString(), // Minimum 2400 DAI (we expect ~3000 from current oracle prices)
     appData: ethers.ZeroHash,
-    maxTimeSinceLastOracleUpdate: 3600, // 1 hour
+    receiver: SAFE_WALLET,
     isSellOrder: true,
     isPartiallyFillable: false,
-    validityBucketSeconds: 3600, // 1 hour
-    sellTokenPriceOracle: ethers.ZeroAddress, // Using internal price discovery
-    buyTokenPriceOracle: ethers.ZeroAddress,
-    strike: ethers.parseEther('1800').toString(), // Trigger when price drops to 1800 DAI/WETH (10% below market)
+    validTo: validTo,
+    sellTokenPriceOracle: ADDRESSES.oracles.wethUsd, // Mock Chainlink WETH/USD oracle
+    buyTokenPriceOracle: ADDRESSES.oracles.daiUsd,   // Mock Chainlink DAI/USD oracle
+    strike: ethers.parseEther('3500').toString(), // Trigger when price drops BELOW 3500 DAI/WETH (current oracle price is $3000, so this WILL trigger)
+    maxTimeSinceLastOracleUpdate: 3600, // 1 hour
   };
 
   console.log('   Stop-Loss Configuration:');
@@ -151,42 +154,44 @@ async function main() {
   console.log(`   Min Buy Amount: ${ethers.formatEther(stopLossConfig.buyAmount)} DAI`);
   console.log(`   Strike Price: ${ethers.formatEther(stopLossConfig.strike)} DAI/WETH`);
   console.log(`   Order Type: ${stopLossConfig.isSellOrder ? 'Sell' : 'Buy'} Order`);
+  console.log(`   WETH/USD Oracle: ${stopLossConfig.sellTokenPriceOracle}`);
+  console.log(`   DAI/USD Oracle: ${stopLossConfig.buyTokenPriceOracle}`);
   console.log('');
 
   // Step 3: Encode Stop-Loss Data and Create Conditional Order
   printSection('STEP 3: Create Conditional Order in ComposableCow');
 
-  // ABI encode the stop-loss data struct
+  // ABI encode the stop-loss data struct (CORRECT ORDER)
   const stopLossDataEncoded = ethers.AbiCoder.defaultAbiCoder().encode(
     [
-      'address', // sellToken
-      'address', // buyToken
-      'address', // receiver
-      'uint256', // sellAmount
-      'uint256', // buyAmount
-      'bytes32', // appData
-      'uint256', // maxTimeSinceLastOracleUpdate
-      'bool',    // isSellOrder
-      'bool',    // isPartiallyFillable
-      'uint32',  // validityBucketSeconds
-      'address', // sellTokenPriceOracle
-      'address', // buyTokenPriceOracle
-      'int256',  // strike
+      'address', // sellToken          - 1
+      'address', // buyToken           - 2
+      'uint256', // sellAmount         - 3
+      'uint256', // buyAmount          - 4
+      'bytes32', // appData            - 5
+      'address', // receiver           - 6
+      'bool',    // isSellOrder        - 7
+      'bool',    // isPartiallyFillable- 8
+      'uint32',  // validTo            - 9
+      'address', // sellTokenPriceOracle - 10
+      'address', // buyTokenPriceOracle  - 11
+      'int256',  // strike             - 12
+      'uint256', // maxTimeSinceLastOracleUpdate - 13
     ],
     [
       stopLossConfig.sellToken,
       stopLossConfig.buyToken,
-      stopLossConfig.receiver,
       stopLossConfig.sellAmount,
       stopLossConfig.buyAmount,
       stopLossConfig.appData,
-      stopLossConfig.maxTimeSinceLastOracleUpdate,
+      stopLossConfig.receiver,
       stopLossConfig.isSellOrder,
       stopLossConfig.isPartiallyFillable,
-      stopLossConfig.validityBucketSeconds,
+      stopLossConfig.validTo,
       stopLossConfig.sellTokenPriceOracle,
       stopLossConfig.buyTokenPriceOracle,
       stopLossConfig.strike,
+      stopLossConfig.maxTimeSinceLastOracleUpdate,
     ]
   );
 

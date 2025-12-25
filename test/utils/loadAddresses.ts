@@ -60,6 +60,13 @@ export interface Addresses {
     perpetualStableSwap: string;
     tradeAboveThreshold: string;
   };
+  oracles: {
+    wethUsd: string;
+    daiUsd: string;
+    usdcUsd: string;
+    usdtUsd: string;
+    gnoUsd: string;
+  };
 }
 
 /**
@@ -198,6 +205,13 @@ export function loadAddresses(): Addresses {
       goodAfterTime: env.GOOD_AFTER_TIME_ADDRESS,
       perpetualStableSwap: env.PERPETUAL_STABLE_SWAP_ADDRESS,
       tradeAboveThreshold: env.TRADE_ABOVE_THRESHOLD_ADDRESS,
+    },
+    oracles: {
+      wethUsd: env.WETH_USD_ORACLE_ADDRESS,
+      daiUsd: env.DAI_USD_ORACLE_ADDRESS,
+      usdcUsd: env.USDC_USD_ORACLE_ADDRESS,
+      usdtUsd: env.USDT_USD_ORACLE_ADDRESS,
+      gnoUsd: env.GNO_USD_ORACLE_ADDRESS,
     },
   };
 
