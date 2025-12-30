@@ -14,7 +14,7 @@ export async function deployUniswap(
   config: DeploymentConfig,
   tokens: TokenAddresses
 ): Promise<UniswapAddresses> {
-  printSection('STEP 2: Deploying Uniswap V2 (Factory + Router) at mainnet addresses');
+  printSection('STEP 3: Deploying Uniswap V2 (Factory + Router) at mainnet addresses');
 
   // Mainnet deployer address for Uniswap contracts
   const uniswapDeployer = '0x9C33eaCc2F50E39940D3AfaF2c7B8246B681A374';

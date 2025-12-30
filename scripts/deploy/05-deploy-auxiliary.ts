@@ -20,7 +20,7 @@ export async function deployAuxiliary(
   cowProtocol: CowProtocolAddresses
 ): Promise<AuxiliaryAddresses> {
   // Step 3.5: Deploy Balances Helper at mainnet address
-  printSection('STEP 3.5: Deploying Balances Helper Contract');
+  printSection('STEP 5.1: Deploying Balances Helper Contract');
 
   const mainnetBalances = '0x3e8C6De9510e7ECad902D005DE3Ab52f35cF4f1b';
   const mainnetRpcUrl = process.env.MAINNET_RPC_URL || 'https://eth.llamarpc.com';
@@ -48,7 +48,7 @@ export async function deployAuxiliary(
   console.log('');
 
   // Step 3.6: Deploy Signatures Contract at mainnet address
-  printSection('STEP 3.6: Deploying Signatures Contract');
+  printSection('STEP 5.2: Deploying Signatures Contract');
 
   const mainnetSignatures = '0x8262d639c38470F38d2eff15926F7071c28057Af';
 
@@ -75,7 +75,7 @@ export async function deployAuxiliary(
   console.log('');
 
   // Step 3.7: Deploy HooksTrampoline Contract at mainnet address
-  printSection('STEP 3.7: Deploying HooksTrampoline Contract');
+  printSection('STEP 5.3: Deploying HooksTrampoline Contract');
 
   const mainnetHooksTrampoline = '0x60Bf78233f48eC42eE3F101b9a05eC7878728006';
   const hooksDeployer = '0x016f34D4f2578c3e9DFfc3f2b811Ba30c0c9e7f3';
@@ -126,7 +126,7 @@ export async function deployAuxiliary(
   console.log('');
 
   // Step 3.8: Deploy CoWShed Factory and Implementation
-  printSection('STEP 3.8: Deploying CoWShed (Factory + Implementation)');
+  printSection('STEP 5.4: Deploying CoWShed (Factory + Implementation)');
 
   console.log('Building CoWShed contracts...');
   await execAsync('FOUNDRY_PROFILE=cow-shed forge build', {

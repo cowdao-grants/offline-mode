@@ -7,7 +7,7 @@ import { printSection, printDeployment } from './utils';
 import { execSync } from 'child_process';
 
 export async function deployComposableCow(config: DeploymentConfig): Promise<ComposableCowAddresses> {
-  printSection('STEP 6: Deploying ComposableCow Contracts');
+  printSection('STEP 8: Deploying ComposableCow Contracts');
 
   // Mainnet ComposableCow contract addresses (from networks.json)
   const mainnetComposableCoW = '0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74';

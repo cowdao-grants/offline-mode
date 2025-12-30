@@ -13,7 +13,7 @@ import {
 import { execSync } from 'child_process';
 
 export async function deployCowProtocol(config: DeploymentConfig): Promise<CowProtocolAddresses> {
-  printSection('STEP 3: Deploying CoW Protocol (Settlement + Auth)');
+  printSection('STEP 4: Deploying CoW Protocol (Settlement + Auth)');
 
   // Mainnet Balancer Vault address and deployer
   const mainnetBalancerVault = '0xba12222222228d8Ba445958a75a0704d566BF2C8';
@@ -193,7 +193,7 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
   console.log('');
 
   // Step 3.3: Approve VaultRelayer in Balancer Vault
-  printSection('STEP 3.3: Approving VaultRelayer in Balancer Vault');
+  printSection('STEP 4.1: Approving VaultRelayer in Balancer Vault');
   console.log('The Settlement contract needs to approve the VaultRelayer in the Balancer Vault...');
   console.log(`  Settlement: ${settlement}`);
   console.log(`  VaultRelayer: ${vaultRelayer}`);
@@ -238,7 +238,7 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
   console.log('');
 
   // Step 3.4: Initialize Solver Authentication
-  printSection('STEP 3.4: Initializing Solver Authentication');
+  printSection('STEP 4.2: Initializing Solver Authentication');
 
   const ALICE_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
   console.log(`Setting up solver authentication...`);
