@@ -15,7 +15,7 @@
 
 import { ethers } from "ethers";
 import * as path from "path";
-import { loadAddresses } from "./utils/loadAddresses";
+import { loadAddresses } from "../../test/utils/loadAddresses";
 
 // Configuration
 const CONFIG = {
