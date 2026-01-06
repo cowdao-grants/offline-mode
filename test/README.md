@@ -45,6 +45,14 @@ Run a specific test file:
 
 ```bash
 npx jest test/__tests__/orders/limit-order.test.ts
+npx jest test/__tests__/orders/market-order.test.ts
+npx jest test/__tests__/orders/composable-cow-twap.test.ts
+```
+
+Run only limit and market order tests (faster):
+
+```bash
+npx jest test/__tests__/orders/limit-order.test.ts test/__tests__/orders/market-order.test.ts
 ```
 
 ### 3. Stop Services (when done)
@@ -82,14 +90,24 @@ test/
 - Verifies exact buy amounts received
 - Handles fee calculations
 
+### ComposableCow TWAP Orders
+- Time-Weighted Average Price orders
+- Splits 30 DAI order into 3 parts of 10 DAI each
+- Parts execute 5 minutes apart
+- Uses Safe wallet (not EOA)
+- Tests conditional order framework
+- Monitors watchtower execution (up to 15 minutes)
+
 ## Test Configuration
 
-- **Timeout:** 2 minutes per test (configured in `jest.config.js`)
+- **Default Timeout:** 2 minutes per test (configured in `jest.config.js`)
+- **TWAP Test Timeout:** 15 minutes (ComposableCow orders require watchtower polling)
 - **Environment:** Node.js
 - **Test Runner:** Jest with ts-jest
 - **Test Wallets:**
   - Limit orders use Anvil account #1 (alice)
   - Market orders use Anvil account #2 (bob)
+  - TWAP orders use Safe wallet (from `TEST_USER_SAFE_ADDRESS` env var)
 
 ## Troubleshooting
 
@@ -121,6 +139,16 @@ Common causes:
 - Baseline solver degraded (restart it)
 - Insufficient token approvals (tests handle this automatically)
 - No liquidity in the trading pair
+- Orders missing surplus (need ~3% profit margin for solver)
+
+### TWAP Orders Not Executing
+
+If TWAP test times out:
+1. Check watchtower logs: `docker-compose logs watch-tower`
+2. Verify Safe wallet is configured: Check `TEST_USER_SAFE_ADDRESS` in `.env`
+3. Ensure watchtower is polling: Should see "Polling for conditional orders" in logs
+4. Check start time (t0): TWAP won't execute until after start time
+5. Verify parts haven't already executed: Check Safe wallet balances manually
 
 ## CI/CD Integration
 

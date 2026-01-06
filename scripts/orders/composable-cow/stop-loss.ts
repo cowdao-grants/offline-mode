@@ -1,4 +1,3 @@
-// WIP
 import { ethers } from 'ethers';
 import {
   CONFIG,
