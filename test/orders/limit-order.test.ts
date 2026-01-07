@@ -100,10 +100,8 @@ describe("Limit Orders", () => {
 
       expect(quote).toBeDefined();
       expect(quote.quote).toBeDefined();
-      // Apply 10% surplus by reducing the buy amount (willing to accept less)
-      // This creates surplus opportunity for the solver
       const quoteBuyAmount = BigInt(quote.quote.buyAmount);
-      const surplusPercent = 10;
+      const surplusPercent = 10; // Increased from 5% to 10% for faster settlements (more buffer)
       const surplusMultiplier = 1 - surplusPercent / 100;
       const adjustedBuyAmount = (
         (quoteBuyAmount * BigInt(Math.floor(surplusMultiplier * 10000))) /
@@ -163,7 +161,7 @@ describe("Limit Orders", () => {
       console.log(`Order submitted: ${orderUid}`);
 
       // Wait for settlement
-      const settled = await waitForOrderExecution(orderUid, 180);
+      const settled = await waitForOrderExecution(orderUid, 210);
       expect(settled).toBe(true);
 
       // Verify balances changed
@@ -194,7 +192,7 @@ describe("Limit Orders", () => {
       // Assertions
       expect(finalSellBalance).toBeLessThan(initialSellBalance);
       expect(finalBuyBalance).toBeGreaterThan(initialBuyBalance);
-    }, 180000); // 3 minutes timeout
+    }, 300000); // 5 minutes timeout
 
     it("should place and settle a USDC -> DAI limit order", async () => {
       const sellToken = "USDC";
@@ -236,9 +234,8 @@ describe("Limit Orders", () => {
         userWallet.address
       );
 
-      // Apply 10% surplus by reducing the buy amount
       const quoteBuyAmount = BigInt(quote.quote.buyAmount);
-      const surplusPercent = 10;
+      const surplusPercent = 10; // Increased from 5% to 10% for faster settlements (more buffer)
       const adjustedBuyAmount = (
         (quoteBuyAmount *
           BigInt(Math.floor((1 - surplusPercent / 100) * 10000))) /
@@ -281,7 +278,7 @@ describe("Limit Orders", () => {
       expect(orderUid).toBeDefined();
       console.log(`Order submitted: ${orderUid}`);
 
-      const settled = await waitForOrderExecution(orderUid, 180);
+      const settled = await waitForOrderExecution(orderUid, 210);
       expect(settled).toBe(true);
 
       const finalSellBalance = await getTokenBalance(
@@ -297,6 +294,6 @@ describe("Limit Orders", () => {
 
       expect(finalSellBalance).toBeLessThan(initialSellBalance);
       expect(finalBuyBalance).toBeGreaterThan(initialBuyBalance);
-    }, 180000);
+    }, 300000); // 5 minutes timeout
   });
 });

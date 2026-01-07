@@ -130,7 +130,9 @@ export async function ensureTokenBalance(
   const tokenFromDeployer = tokenContract.connect(deployer) as any;
 
   const transferAmount = requiredAmount * 10n;
-  await tokenFromDeployer.transfer(userAddress, transferAmount);
+  const nonce = await deployer.getNonce();
+  const tx = await tokenFromDeployer.transfer(userAddress, transferAmount, { nonce });
+  await tx.wait(); // Wait for transaction to be mined
 }
 
 export async function getQuote(
@@ -241,6 +243,8 @@ export async function approveToken(
 ): Promise<void> {
   const erc20Abi = ['function approve(address, uint256) returns (bool)'];
   const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, signer);
-  const tx = await tokenContract.approve(spenderAddress, amount);
+
+  const nonce = await signer.getNonce();
+  const tx = await tokenContract.approve(spenderAddress, amount, { nonce });
   await tx.wait();
 }

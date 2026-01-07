@@ -3,66 +3,66 @@
   "tokens": {
     "WETH": {
       "decimals": 18,
-      "initialSupply": "5000000000000000000000"
+      "initialSupply": "20000000000000000000000"
     },
     "USDC": {
       "decimals": 6,
-      "initialSupply": "15000000000000"
+      "initialSupply": "50000000000000"
     },
     "DAI": {
       "decimals": 18,
-      "initialSupply": "15000000000000000000000000"
+      "initialSupply": "50000000000000000000000000"
     },
     "USDT": {
       "decimals": 6,
-      "initialSupply": "15000000000000"
+      "initialSupply": "50000000000000"
     },
     "GNO": {
       "decimals": 18,
-      "initialSupply": "100000000000000000000000"
+      "initialSupply": "500000000000000000000000"
     }
   },
   "defi": {
     "uniswapV2": {
       "WETH_USDC": {
-        "token0Amount": "1000000000000000000000",
-        "token1Amount": "3000000000000"
+        "token0Amount": "4000000000000000000000",
+        "token1Amount": "12000000000000"
       },
       "WETH_DAI": {
-        "token0Amount": "1000000000000000000000",
-        "token1Amount": "3000000000000000000000000"
+        "token0Amount": "4000000000000000000000",
+        "token1Amount": "12000000000000000000000000"
       },
       "WETH_USDT": {
-        "token0Amount": "1000000000000000000000",
-        "token1Amount": "3000000000000"
+        "token0Amount": "4000000000000000000000",
+        "token1Amount": "12000000000000"
       },
       "WETH_GNO": {
-        "token0Amount": "1000000000000000000000",
-        "token1Amount": "30000000000000000000000"
+        "token0Amount": "4000000000000000000000",
+        "token1Amount": "120000000000000000000000"
       },
       "USDC_DAI": {
-        "token0Amount": "1000000000000",
-        "token1Amount": "1000000000000000000000000"
+        "token0Amount": "4000000000000",
+        "token1Amount": "4000000000000000000000000"
       },
       "USDC_USDT": {
-        "token0Amount": "1000000000000",
-        "token1Amount": "1000000000000"
+        "token0Amount": "4000000000000",
+        "token1Amount": "4000000000000"
       },
       "USDC_GNO": {
-        "token0Amount": "1000000000000",
-        "token1Amount": "10000000000000000000000"
+        "token0Amount": "4000000000000",
+        "token1Amount": "40000000000000000000000"
       },
       "DAI_USDT": {
-        "token0Amount": "1000000000000000000000000",
-        "token1Amount": "1000000000000"
+        "token0Amount": "4000000000000000000000000",
+        "token1Amount": "4000000000000"
       },
       "DAI_GNO": {
-        "token0Amount": "1000000000000000000000000",
-        "token1Amount": "10000000000000000000000"
+        "token0Amount": "4000000000000000000000000",
+        "token1Amount": "40000000000000000000000"
       },
       "USDT_GNO": {
-        "token0Amount": "1000000000000",
-        "token1Amount": "10000000000000000000000"
+        "token0Amount": "4000000000000",
+        "token1Amount": "40000000000000000000000"
       }
     }
   },
@@ -115,6 +115,26 @@
         "DAI": "150000000000000000000000",
         "USDT": "150000000000",
         "GNO": "1500000000000000000000"
+      }
+    },
+    "hooks_test_user": {
+      "address": "0x15d34Aaf54267DB7D7C367839AAf71A00a2C6A65",
+      "tokens": {
+        "WETH": "500000000000000000000",
+        "USDC": "500000000000",
+        "DAI": "500000000000000000000000",
+        "USDT": "500000000000",
+        "GNO": "5000000000000000000000"
+      }
+    },
+    "hooks_test_recipient": {
+      "address": "0x9965507D1a55bcC2695C58ba16fB37d819B0A4dc",
+      "tokens": {
+        "WETH": "10000000000000000000",
+        "USDC": "10000000000",
+        "DAI": "10000000000000000000000",
+        "USDT": "10000000000",
+        "GNO": "100000000000000000000"
       }
     }
   }
