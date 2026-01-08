@@ -6,6 +6,8 @@
     "start-anvil:fresh": "rm -rf state/anvil-state.json & ./scripts/start-anvil.sh",
     "deploy:all": "./scripts/deploy-all.sh",
     "deploy:ts": "npx ts-node scripts/deploy-all.ts",
+    "deploy:debug": "LOG_LEVEL=debug npx ts-node scripts/deploy-all.ts",
+    "deploy:trace": "LOG_LEVEL=trace npx ts-node scripts/deploy-all.ts",
     "build": "forge build",
     "test:cowshed": "npx ts-node test/test-cowshed-order.ts",
     "test:order": "npx ts-node test/test-playground-order.ts",
@@ -25,6 +27,8 @@
     "cow-shed": "github:cowdao-grants/cow-shed",
     "dotenv": "^17.2.3",
     "forge-std": "github:foundry-rs/forge-std",
+    "pino": "^8.17.2",
+    "pino-pretty": "^10.3.1",
     "solady": "github:Vectorized/solady",
     "solmate": "github:transmissions11/solmate"
   },

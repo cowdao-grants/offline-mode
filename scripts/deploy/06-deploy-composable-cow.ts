@@ -5,6 +5,7 @@
 import { DeploymentConfig, ComposableCowAddresses } from './types';
 import { printSection, printDeployment } from './utils';
 import { execSync } from 'child_process';
+import { logger, indent } from './logger';
 
 export async function deployComposableCow(config: DeploymentConfig): Promise<ComposableCowAddresses> {
   printSection('STEP 6: Deploying ComposableCow Contracts');
@@ -23,21 +24,19 @@ export async function deployComposableCow(config: DeploymentConfig): Promise<Com
 
   // Get mainnet RPC URL from environment
   const mainnetRpcUrl = process.env.MAINNET_RPC_URL || 'https://eth.llamarpc.com';
-  console.log(`Using mainnet RPC: ${mainnetRpcUrl}`);
-  console.log('');
+  logger.debug(`Using mainnet RPC: ${mainnetRpcUrl}`);
 
-  console.log('Fetching ComposableCow contract bytecode from mainnet...');
-  console.log('(Adding delays to avoid RPC rate limits)');
-  console.log('');
+  logger.debug('Fetching ComposableCow contract bytecode from mainnet');
+  logger.trace(indent('Adding delays to avoid RPC rate limits'));
 
   // Helper function to fetch with delay
   const fetchBytecode = (name: string, address: string): string => {
-    console.log(`  Fetching ${name} bytecode...`);
+    logger.trace(indent(`Fetching ${name} bytecode`));
     const bytecode = execSync(
-      `FOUNDRY_DISABLE_NIGHTLY_WARNING=1 cast code ${address} --rpc-url ${mainnetRpcUrl}`,
+      `cast code ${address} --rpc-url ${mainnetRpcUrl}`,
       { encoding: 'utf8' }
     ).trim();
-    console.log(`    ${name} bytecode length: ${bytecode.length} chars`);
+    logger.trace(indent(`${name} bytecode length: ${bytecode.length} chars`, 2));
     // Small delay to avoid rate limits
     execSync('sleep 1', { encoding: 'utf8' });
     return bytecode;
@@ -55,61 +54,58 @@ export async function deployComposableCow(config: DeploymentConfig): Promise<Com
   const twapBytecode = fetchBytecode('TWAP', mainnetTWAP);
   const tradeAboveThresholdBytecode = fetchBytecode('TradeAboveThreshold', mainnetTradeAboveThreshold);
 
-  console.log('');
-  console.log('Setting ComposableCow contracts at mainnet addresses...');
+  logger.debug('Setting ComposableCow contracts at mainnet addresses');
 
   // Set bytecode for all contracts
-  console.log('  Setting ComposableCoW at', mainnetComposableCoW);
+  logger.trace(indent(`Setting ComposableCoW at ${mainnetComposableCoW}`));
   execSync(
     `cast rpc anvil_setCode ${mainnetComposableCoW} ${composableCowBytecode} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
-  console.log('  Setting ExtensibleFallbackHandler at', mainnetExtensibleFallbackHandler);
+  logger.trace(indent(`Setting ExtensibleFallbackHandler at ${mainnetExtensibleFallbackHandler}`));
   execSync(
     `cast rpc anvil_setCode ${mainnetExtensibleFallbackHandler} ${fallbackHandlerBytecode} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
-  console.log('  Setting CurrentBlockTimestampFactory at', mainnetCurrentBlockTimestampFactory);
+  logger.trace(indent(`Setting CurrentBlockTimestampFactory at ${mainnetCurrentBlockTimestampFactory}`));
   execSync(
     `cast rpc anvil_setCode ${mainnetCurrentBlockTimestampFactory} ${timestampFactoryBytecode} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
-  console.log('  Setting GoodAfterTime at', mainnetGoodAfterTime);
+  logger.trace(indent(`Setting GoodAfterTime at ${mainnetGoodAfterTime}`));
   execSync(
     `cast rpc anvil_setCode ${mainnetGoodAfterTime} ${goodAfterTimeBytecode} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
-  console.log('  Setting PerpetualStableSwap at', mainnetPerpetualStableSwap);
+  logger.trace(indent(`Setting PerpetualStableSwap at ${mainnetPerpetualStableSwap}`));
   execSync(
     `cast rpc anvil_setCode ${mainnetPerpetualStableSwap} ${perpetualStableSwapBytecode} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
-  console.log('  Setting StopLoss at', mainnetStopLoss);
+  logger.trace(indent(`Setting StopLoss at ${mainnetStopLoss}`));
   execSync(
     `cast rpc anvil_setCode ${mainnetStopLoss} ${stopLossBytecode} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
-  console.log('  Setting TWAP at', mainnetTWAP);
+  logger.trace(indent(`Setting TWAP at ${mainnetTWAP}`));
   execSync(
     `cast rpc anvil_setCode ${mainnetTWAP} ${twapBytecode} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
-  console.log('  Setting TradeAboveThreshold at', mainnetTradeAboveThreshold);
+  logger.trace(indent(`Setting TradeAboveThreshold at ${mainnetTradeAboveThreshold}`));
   execSync(
     `cast rpc anvil_setCode ${mainnetTradeAboveThreshold} ${tradeAboveThresholdBytecode} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
-  console.log('');
-  console.log('✅ ComposableCow contracts deployed at mainnet addresses!');
-  console.log('');
+  logger.info('ComposableCow contracts deployed at mainnet addresses successfully');
 
   const addresses: ComposableCowAddresses = {
     composableCoW: mainnetComposableCoW,
@@ -124,24 +120,22 @@ export async function deployComposableCow(config: DeploymentConfig): Promise<Com
     },
   };
 
-  console.log('📝 Deployed ComposableCow addresses:');
+  logger.info('Deployed ComposableCow addresses:');
   printDeployment('ComposableCoW', addresses.composableCoW);
   printDeployment('ExtensibleFallbackHandler', addresses.extensibleFallbackHandler);
   printDeployment('CurrentBlockTimestampFactory', addresses.currentBlockTimestampFactory);
-  console.log('');
-  console.log('  Conditional Order Types:');
+  logger.info(indent('Conditional Order Types:'));
   printDeployment('  GoodAfterTime', addresses.conditionalOrders.goodAfterTime);
   printDeployment('  PerpetualStableSwap', addresses.conditionalOrders.perpetualStableSwap);
   printDeployment('  StopLoss', addresses.conditionalOrders.stopLoss);
   printDeployment('  TWAP', addresses.conditionalOrders.twap);
   printDeployment('  TradeAboveThreshold', addresses.conditionalOrders.tradeAboveThreshold);
-  console.log('');
 
   return addresses;
 }
 
 // If run directly
 if (require.main === module) {
-  console.error('❌ This script should be run via the main deploy-all.ts script');
+  logger.error('This script should be run via the main deploy-all.ts script');
   process.exit(1);
 }

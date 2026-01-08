@@ -60,8 +60,6 @@ contract AddLiquidityDirect is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // Add liquidity to all pairs with DEEP liquidity to prevent slippage
-        // Target prices: WETH = $3000, USDC = $1, DAI = $1, USDT = $1, GNO = $100
-        // Using 10x larger amounts for deep liquidity
 
         console.log("Adding liquidity to WETH pairs...");
         // 1000 WETH paired with 3M stablecoins = 3000 stables per WETH

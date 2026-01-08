@@ -11,6 +11,7 @@ import {
   printSection,
   printDeployment,
 } from './utils';
+import { logger, indent } from './logger';
 
 export interface MockOracleAddresses {
   wethUsdOracle: string;
@@ -25,9 +26,8 @@ export async function deployMockOracles(
 ): Promise<MockOracleAddresses> {
   printSection('STEP 8: Deploying Mock Chainlink Oracles');
 
-  console.log('Deploying mock Chainlink oracles for all base tokens...');
-  console.log('(forge script will compile contracts automatically)');
-  console.log('');
+  logger.debug('Deploying mock Chainlink oracles for all base tokens');
+  logger.trace(indent('Forge script will compile contracts automatically'));
 
   await runForgeScript(
     'contracts/script/DeployMockChainlinkOracles.s.sol',
@@ -45,23 +45,19 @@ export async function deployMockOracles(
   const usdtUsdOracle = extractAddress(broadcast, undefined, 'CREATE', 3);
   const gnoUsdOracle = extractAddress(broadcast, undefined, 'CREATE', 4);
 
-  console.log('');
-  console.log('✅ Mock Chainlink oracles deployed!');
-  console.log('');
-  console.log('📝 Deployed oracle addresses:');
+  logger.info('Mock Chainlink oracles deployed successfully');
+  logger.info('Deployed oracle addresses:');
   printDeployment('WETH/USD Oracle', wethUsdOracle);
   printDeployment('DAI/USD Oracle', daiUsdOracle);
   printDeployment('USDC/USD Oracle', usdcUsdOracle);
   printDeployment('USDT/USD Oracle', usdtUsdOracle);
   printDeployment('GNO/USD Oracle', gnoUsdOracle);
-  console.log('');
-  console.log('   Initial prices (8 decimals):');
-  console.log('   - WETH/USD: $3000');
-  console.log('   - DAI/USD:  $1');
-  console.log('   - USDC/USD: $1');
-  console.log('   - USDT/USD: $1');
-  console.log('   - GNO/USD:  $100');
-  console.log('');
+  logger.info(indent('Initial prices (8 decimals):'));
+  logger.info(indent('- WETH/USD: $3000', 2));
+  logger.info(indent('- DAI/USD:  $1', 2));
+  logger.info(indent('- USDC/USD: $1', 2));
+  logger.info(indent('- USDT/USD: $1', 2));
+  logger.info(indent('- GNO/USD:  $100', 2));
 
   return {
     wethUsdOracle,
@@ -74,6 +70,6 @@ export async function deployMockOracles(
 
 // If run directly
 if (require.main === module) {
-  console.error('❌ This script should be run via the main deploy-all.ts script');
+  logger.error('This script should be run via the main deploy-all.ts script');
   process.exit(1);
 }

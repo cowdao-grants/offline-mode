@@ -13,6 +13,7 @@ import {
   printOutputFiles,
   printNextSteps,
 } from './deploy/utils';
+import { logger } from './deploy/logger';
 import { deployMulticall3 } from './deploy/00-deploy-multicall3';
 import { deployTokens } from './deploy/01-deploy-tokens';
 import { deployUniswap } from './deploy/02-deploy-uniswap';
@@ -34,8 +35,7 @@ const CHAIN_ID = 1; // Mainnet chain ID for address compatibility
 // ============================================================================
 
 async function main() {
-  console.log('🚀 Deploying all contracts to local Anvil...');
-  console.log('');
+  logger.info('Deploying all contracts to local Anvil');
 
   // Configuration
   const config: DeploymentConfig = {
@@ -44,8 +44,7 @@ async function main() {
     chainId: CHAIN_ID,
   };
 
-  console.log(`Using RPC URL: ${config.rpcUrl}`);
-  console.log('');
+  logger.debug(`Using RPC URL: ${config.rpcUrl}`);
 
   // Create directories
   const configDir = path.join(__dirname, '../config');
@@ -122,8 +121,7 @@ async function main() {
     // Write back to .env
     fs.writeFileSync(envPath, envLines.join('\n'));
 
-    console.log('✅ Oracle addresses saved to .env');
-    console.log('');
+    logger.info('Oracle addresses saved to .env');
 
     // Also save Safe address to .env
     if (!envContent.includes('TEST_USER_SAFE_ADDRESS')) {
@@ -135,26 +133,18 @@ async function main() {
         `TEST_USER_SAFE_ADDRESS=${safe.testUserSafe}`,
       ];
       fs.appendFileSync(envPath, safeEnvLines.join('\n'));
-      console.log('✅ Test Safe address saved to .env');
-      console.log('');
+      logger.info('Test Safe address saved to .env');
     }
 
     // Print summary
-    printSection('✅ DEPLOYMENT COMPLETE');
-    console.log('');
+    printSection('DEPLOYMENT COMPLETE');
     printDeploymentSummary();
-    console.log('');
     printOutputFiles();
-    console.log('');
     printNextSteps();
-    console.log('');
-    console.log('━'.repeat(60));
 
   } catch (error) {
-    console.error('');
-    printSection('❌ DEPLOYMENT FAILED');
-    console.error('');
-    console.error('Error:', error);
+    printSection('DEPLOYMENT FAILED');
+    logger.error({ error }, 'Deployment error');
     process.exit(1);
   }
 }
@@ -166,7 +156,7 @@ if (require.main === module) {
       process.exit(0);
     })
     .catch(error => {
-      console.error('Fatal error:', error);
+      logger.fatal({ error }, 'Fatal deployment error');
       process.exit(1);
     });
 }
