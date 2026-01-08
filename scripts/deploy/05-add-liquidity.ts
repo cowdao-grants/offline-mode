@@ -77,7 +77,7 @@ export async function initializeRouter(
 
   // First, fund the Settlement contract with ETH for gas
   console.log('Funding Settlement contract with ETH for gas...');
-  const { stdout: fundOutput } = await execAsync(
+  await execAsync(
     `cast send ${cowProtocol.settlement} --value 10ether --private-key ${config.deployerPrivateKey} --rpc-url ${config.rpcUrl}`,
     { cwd: path.join(__dirname, '../..') }
   );
@@ -94,7 +94,7 @@ export async function initializeRouter(
   for (const token of tokenList) {
     console.log(`Approving ${token.name}...`);
     try {
-      const { stdout: approveOutput } = await execAsync(
+      await execAsync(
         `cast send ${token.address} "approve(address,uint256)" ${uniswap.router} ${MAX_UINT256} --from ${cowProtocol.settlement} --rpc-url ${config.rpcUrl} --unlocked --gas-limit 100000`,
         { cwd: path.join(__dirname, '../..') }
       );

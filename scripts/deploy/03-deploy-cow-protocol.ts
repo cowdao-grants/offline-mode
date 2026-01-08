@@ -18,22 +18,22 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
   printSection('STEP 3: Deploying CoW Protocol (Settlement + Auth)');
 
   // Mainnet Balancer Vault address and deployer
-  const mainnetBalancerVault = '0xba12222222228d8Ba445958a75a0704d566BF2C8';
-  const balancerDeployer = '0x697A71353A4BC1eb1356763018a229c27a3fbA0C';
+  const MAINNET_BALANCER_VAULT = '0xba12222222228d8Ba445958a75a0704d566BF2C8';
+  const BALANCER_DEPLOYER = '0x697A71353A4BC1eb1356763018a229c27a3fbA0C';
 
   console.log('Setting up Balancer deployer account...');
 
   // Fund the Balancer deployer with ETH
   console.log('  Funding Balancer deployer with ETH...');
   execSync(
-    `cast send ${balancerDeployer} --value 100ether --private-key ${config.deployerPrivateKey} --rpc-url ${config.rpcUrl}`,
+    `cast send ${BALANCER_DEPLOYER} --value 100ether --private-key ${config.deployerPrivateKey} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
   // Set nonce to 4 for vault deployment
   console.log('  Setting deployer nonce to 4...');
   execSync(
-    `cast rpc anvil_setNonce ${balancerDeployer} 0x4 --rpc-url ${config.rpcUrl}`,
+    `cast rpc anvil_setNonce ${BALANCER_DEPLOYER} 0x4 --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
@@ -61,11 +61,11 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
 
   // Set Vault bytecode at mainnet address
   execSync(
-    `cast rpc anvil_setCode ${mainnetBalancerVault} ${vaultBytecode} --rpc-url ${config.rpcUrl}`,
+    `cast rpc anvil_setCode ${MAINNET_BALANCER_VAULT} ${vaultBytecode} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
-  const balancerVault = mainnetBalancerVault;
+  const balancerVault = MAINNET_BALANCER_VAULT;
   console.log(`  ✅ MockBalancerVault deployed at mainnet address: ${balancerVault}`);
   console.log('');
 

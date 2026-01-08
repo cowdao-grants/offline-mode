@@ -22,11 +22,11 @@ export async function deployAuxiliary(
   // Step 3.5: Deploy Balances Helper at mainnet address
   printSection('STEP 3.5: Deploying Balances Helper Contract');
 
-  const mainnetBalances = '0x3e8C6De9510e7ECad902D005DE3Ab52f35cF4f1b';
+  const MAINNET_BALANCES_HELPER = '0x3e8C6De9510e7ECad902D005DE3Ab52f35cF4f1b';
 
   console.log('Fetching Balances Helper bytecode from mainnet...');
   const balancesBytecode = execSync(
-    `cast code ${mainnetBalances} --rpc-url https://eth.llamarpc.com`,
+    `cast code ${MAINNET_BALANCES_HELPER} --rpc-url https://eth.llamarpc.com`,
     { encoding: 'utf8' }
   ).trim();
 
@@ -34,11 +34,11 @@ export async function deployAuxiliary(
 
   console.log('Setting Balances Helper bytecode at local address...');
   execSync(
-    `cast rpc anvil_setCode ${mainnetBalances} ${balancesBytecode} --rpc-url ${config.rpcUrl}`,
+    `cast rpc anvil_setCode ${MAINNET_BALANCES_HELPER} ${balancesBytecode} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
-  const tradeSimulator = mainnetBalances;
+  const tradeSimulator = MAINNET_BALANCES_HELPER;
   console.log('');
   console.log('✅ Balances Helper contract deployed!');
   console.log('');
