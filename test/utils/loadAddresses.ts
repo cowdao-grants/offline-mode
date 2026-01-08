@@ -46,6 +46,27 @@ export interface Addresses {
     factory: string;
     implementation: string;
   };
+  cowShedForComposableCoW: {
+    factory: string;
+    implementation: string;
+  };
+  composableCow: {
+    composableCoW: string;
+    extensibleFallbackHandler: string;
+    currentBlockTimestampFactory: string;
+    twap: string;
+    stopLoss: string;
+    goodAfterTime: string;
+    perpetualStableSwap: string;
+    tradeAboveThreshold: string;
+  };
+  oracles: {
+    wethUsd: string;
+    daiUsd: string;
+    usdcUsd: string;
+    usdtUsd: string;
+    gnoUsd: string;
+  };
 }
 
 /**
@@ -170,6 +191,27 @@ export function loadAddresses(): Addresses {
     cowShed: {
       factory: env.COWSHED_FACTORY_ADDRESS,
       implementation: env.COWSHED_IMPLEMENTATION_ADDRESS,
+    },
+    cowShedForComposableCoW: {
+      factory: env.COWSHED_COMPOSABLE_COW_FACTORY_ADDRESS,
+      implementation: env.COWSHED_COMPOSABLE_COW_IMPLEMENTATION_ADDRESS,
+    },
+    composableCow: {
+      composableCoW: env.COMPOSABLE_COW_ADDRESS,
+      extensibleFallbackHandler: env.EXTENSIBLE_FALLBACK_HANDLER_ADDRESS,
+      currentBlockTimestampFactory: env.CURRENT_BLOCK_TIMESTAMP_FACTORY_ADDRESS,
+      twap: env.TWAP_ADDRESS,
+      stopLoss: env.STOP_LOSS_ADDRESS,
+      goodAfterTime: env.GOOD_AFTER_TIME_ADDRESS,
+      perpetualStableSwap: env.PERPETUAL_STABLE_SWAP_ADDRESS,
+      tradeAboveThreshold: env.TRADE_ABOVE_THRESHOLD_ADDRESS,
+    },
+    oracles: {
+      wethUsd: env.WETH_USD_ORACLE_ADDRESS,
+      daiUsd: env.DAI_USD_ORACLE_ADDRESS,
+      usdcUsd: env.USDC_USD_ORACLE_ADDRESS,
+      usdtUsd: env.USDT_USD_ORACLE_ADDRESS,
+      gnoUsd: env.GNO_USD_ORACLE_ADDRESS,
     },
   };
 

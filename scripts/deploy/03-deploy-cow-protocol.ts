@@ -7,12 +7,11 @@ import {
   runForgeScript,
   readBroadcastResult,
   extractAddress,
-  castCall,
-  castSend,
   printSection,
   printDeployment,
 } from './utils';
 import { execSync } from 'child_process';
+import { logger, indent } from './logger';
 
 export async function deployCowProtocol(config: DeploymentConfig): Promise<CowProtocolAddresses> {
   printSection('STEP 3: Deploying CoW Protocol (Settlement + Auth)');
@@ -21,27 +20,26 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
   const MAINNET_BALANCER_VAULT = '0xba12222222228d8Ba445958a75a0704d566BF2C8';
   const BALANCER_DEPLOYER = '0x697A71353A4BC1eb1356763018a229c27a3fbA0C';
 
-  console.log('Setting up Balancer deployer account...');
+  logger.debug('Setting up Balancer deployer account');
 
   // Fund the Balancer deployer with ETH
-  console.log('  Funding Balancer deployer with ETH...');
+  logger.trace(indent('Funding Balancer deployer with ETH'));
   execSync(
     `cast send ${BALANCER_DEPLOYER} --value 100ether --private-key ${config.deployerPrivateKey} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
   // Set nonce to 4 for vault deployment
-  console.log('  Setting deployer nonce to 4...');
+  logger.trace(indent('Setting deployer nonce to 4'));
   execSync(
     `cast rpc anvil_setNonce ${BALANCER_DEPLOYER} 0x4 --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
-  console.log('');
-  console.log('Deploying MockBalancerVault at mainnet address...');
+  logger.debug('Deploying MockBalancerVault at mainnet address');
 
   // Deploy temporary vault to get bytecode
-  console.log('  Getting MockBalancerVault bytecode...');
+  logger.trace(indent('Getting MockBalancerVault bytecode'));
   await runForgeScript(
     'contracts/script/DeployBalancerVault.s.sol',
     'DeployBalancerVault',
@@ -53,7 +51,7 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
   const tempVault = extractAddress(balancerBroadcast, 'MockBalancerVault', 'CREATE2');
 
   // Get Vault bytecode from temporary deployment
-  console.log('  Copying Vault bytecode to mainnet address...');
+  logger.trace(indent('Copying Vault bytecode to mainnet address'));
   const vaultBytecode = execSync(
     `cast code ${tempVault} --rpc-url ${config.rpcUrl}`,
     { encoding: 'utf8' }
@@ -66,8 +64,7 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
   );
 
   const balancerVault = MAINNET_BALANCER_VAULT;
-  console.log(`  ✅ MockBalancerVault deployed at mainnet address: ${balancerVault}`);
-  console.log('');
+  logger.info(indent(`MockBalancerVault deployed at mainnet address: ${balancerVault}`));
 
   // Mainnet CoW Protocol addresses
   const mainnetAuthenticator = '0x2c4c28DDBdAc9C5E7055b4C863b72eA0149D8aFE';
@@ -76,17 +73,16 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
 
   // Get mainnet RPC URL from environment
   const mainnetRpcUrl = process.env.MAINNET_RPC_URL || 'https://eth.llamarpc.com';
-  console.log(`Using mainnet RPC: ${mainnetRpcUrl}`);
-  console.log('');
+  logger.debug(`Using mainnet RPC: ${mainnetRpcUrl}`);
 
-  console.log('Fetching CoW Protocol contract bytecode from mainnet...');
+  logger.debug('Fetching CoW Protocol contract bytecode from mainnet');
 
   // Authenticator is a proxy - we need both proxy and implementation
-  console.log('  Fetching Authenticator proxy bytecode...');
+  logger.trace(indent('Fetching Authenticator proxy bytecode'));
   const authBytecode = execSync(`cast code ${mainnetAuthenticator} --rpc-url ${mainnetRpcUrl}`, {
     encoding: 'utf8',
   }).trim();
-  console.log(`    Authenticator proxy bytecode length: ${authBytecode.length} chars`);
+  logger.trace(indent(`Authenticator proxy bytecode length: ${authBytecode.length} chars`, 2));
 
   // Get implementation address from EIP-1967 storage slot
   const implSlot = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
@@ -95,62 +91,60 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
     { encoding: 'utf8' }
   ).trim();
   const mainnetAuthImpl = '0x' + implAddressRaw.slice(-40);
-  console.log(`  Authenticator implementation address: ${mainnetAuthImpl}`);
+  logger.trace(indent(`Authenticator implementation address: ${mainnetAuthImpl}`));
 
-  console.log('  Fetching Authenticator implementation bytecode...');
+  logger.trace(indent('Fetching Authenticator implementation bytecode'));
   const authImplBytecode = execSync(`cast code ${mainnetAuthImpl} --rpc-url ${mainnetRpcUrl}`, {
     encoding: 'utf8',
   }).trim();
-  console.log(`    Authenticator implementation bytecode length: ${authImplBytecode.length} chars`);
+  logger.trace(indent(`Authenticator implementation bytecode length: ${authImplBytecode.length} chars`, 2));
 
-  console.log('  Fetching Settlement bytecode...');
+  logger.trace(indent('Fetching Settlement bytecode'));
   const settlementBytecode = execSync(`cast code ${mainnetSettlement} --rpc-url ${mainnetRpcUrl}`, {
     encoding: 'utf8',
   }).trim();
-  console.log(`    Settlement bytecode length: ${settlementBytecode.length} chars`);
+  logger.trace(indent(`Settlement bytecode length: ${settlementBytecode.length} chars`, 2));
 
-  console.log('  Fetching VaultRelayer bytecode...');
+  logger.trace(indent('Fetching VaultRelayer bytecode'));
   const vaultRelayerBytecode = execSync(`cast code ${mainnetVaultRelayer} --rpc-url ${mainnetRpcUrl}`, {
     encoding: 'utf8',
   }).trim();
-  console.log(`    VaultRelayer bytecode length: ${vaultRelayerBytecode.length} chars`);
+  logger.trace(indent(`VaultRelayer bytecode length: ${vaultRelayerBytecode.length} chars`, 2));
 
-  console.log('');
-  console.log('Fetching storage state from mainnet...');
+  logger.debug('Fetching storage state from mainnet');
 
   // Fetch Authenticator storage (slot 0 contains manager address)
-  console.log('  Fetching Authenticator storage...');
+  logger.trace(indent('Fetching Authenticator storage'));
   const authStorage0 = execSync(
     `cast storage ${mainnetAuthenticator} 0 --rpc-url ${mainnetRpcUrl}`,
     { encoding: 'utf8' }
   ).trim();
-  console.log(`    Slot 0: ${authStorage0}`);
+  logger.trace(indent(`Slot 0: ${authStorage0}`, 2));
 
   // Fetch Settlement storage (slot 1 contains initialization flag)
-  console.log('  Fetching Settlement storage...');
+  logger.trace(indent('Fetching Settlement storage'));
   const settlementStorage1 = execSync(
     `cast storage ${mainnetSettlement} 1 --rpc-url ${mainnetRpcUrl}`,
     { encoding: 'utf8' }
   ).trim();
-  console.log(`    Slot 1: ${settlementStorage1}`);
+  logger.trace(indent(`Slot 1: ${settlementStorage1}`, 2));
 
-  console.log('');
-  console.log('Setting CoW Protocol contracts at mainnet addresses...');
+  logger.debug('Setting CoW Protocol contracts at mainnet addresses');
 
   // First, deploy the Authenticator implementation contract
-  console.log('  Setting Authenticator implementation at', mainnetAuthImpl);
+  logger.trace(indent(`Setting Authenticator implementation at ${mainnetAuthImpl}`));
   execSync(
     `cast rpc anvil_setCode ${mainnetAuthImpl} ${authImplBytecode} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
   // Set Authenticator proxy bytecode and storage
-  console.log('  Setting Authenticator proxy at', mainnetAuthenticator);
+  logger.trace(indent(`Setting Authenticator proxy at ${mainnetAuthenticator}`));
   execSync(
     `cast rpc anvil_setCode ${mainnetAuthenticator} ${authBytecode} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
-  console.log('  Setting Authenticator proxy storage...');
+  logger.trace(indent('Setting Authenticator proxy storage'));
   // Set slot 0 (manager address)
   execSync(
     `cast rpc anvil_setStorageAt ${mainnetAuthenticator} 0x0 ${authStorage0} --rpc-url ${config.rpcUrl}`,
@@ -164,19 +158,19 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
   );
 
   // Set Settlement bytecode and storage
-  console.log('  Setting Settlement at', mainnetSettlement);
+  logger.trace(indent(`Setting Settlement at ${mainnetSettlement}`));
   execSync(
     `cast rpc anvil_setCode ${mainnetSettlement} ${settlementBytecode} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
-  console.log('  Setting Settlement storage...');
+  logger.trace(indent('Setting Settlement storage'));
   execSync(
     `cast rpc anvil_setStorageAt ${mainnetSettlement} 0x1 ${settlementStorage1} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
   // Set VaultRelayer bytecode (no storage needed - stateless)
-  console.log('  Setting VaultRelayer at', mainnetVaultRelayer);
+  logger.trace(indent(`Setting VaultRelayer at ${mainnetVaultRelayer}`));
   execSync(
     `cast rpc anvil_setCode ${mainnetVaultRelayer} ${vaultRelayerBytecode} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
@@ -186,38 +180,35 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
   const settlement = mainnetSettlement;
   const vaultRelayer = mainnetVaultRelayer;
 
-  console.log(`  ✅ Authenticator set at: ${authenticator}`);
-  console.log(`  ✅ Settlement set at: ${settlement}`);
-  console.log(`  ✅ VaultRelayer set at: ${vaultRelayer}`);
+  logger.info(indent(`Authenticator set at: ${authenticator}`));
+  logger.info(indent(`Settlement set at: ${settlement}`));
+  logger.info(indent(`VaultRelayer set at: ${vaultRelayer}`));
 
-  console.log('');
-  console.log('✅ CoW Protocol deployed at mainnet addresses!');
-  console.log('');
+  logger.info('CoW Protocol deployed at mainnet addresses successfully');
 
   // Step 3.3: Approve VaultRelayer in Balancer Vault
   printSection('STEP 3.3: Approving VaultRelayer in Balancer Vault');
-  console.log('The Settlement contract needs to approve the VaultRelayer in the Balancer Vault...');
-  console.log(`  Settlement: ${settlement}`);
-  console.log(`  VaultRelayer: ${vaultRelayer}`);
-  console.log(`  Balancer Vault: ${balancerVault}`);
-  console.log('');
+  logger.debug('The Settlement contract needs to approve the VaultRelayer in the Balancer Vault');
+  logger.debug(indent(`Settlement: ${settlement}`));
+  logger.debug(indent(`VaultRelayer: ${vaultRelayer}`));
+  logger.debug(indent(`Balancer Vault: ${balancerVault}`));
 
   // Impersonate Settlement contract to call setRelayerApproval
-  console.log('Impersonating Settlement contract to approve VaultRelayer...');
+  logger.debug('Impersonating Settlement contract to approve VaultRelayer');
   execSync(
     `cast rpc anvil_impersonateAccount ${settlement} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
   // Fund Settlement with ETH for gas
-  console.log('  Funding Settlement with ETH...');
+  logger.trace(indent('Funding Settlement with ETH'));
   execSync(
     `cast send ${settlement} --value 1ether --private-key ${config.deployerPrivateKey} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
   // Call setRelayerApproval(sender, relayer, approved) on Balancer Vault
-  console.log('  Calling setRelayerApproval on Balancer Vault...');
+  logger.debug(indent('Calling setRelayerApproval on Balancer Vault'));
   execSync(
     `cast send ${balancerVault} "setRelayerApproval(address,address,bool)" ${settlement} ${vaultRelayer} true --from ${settlement} --unlocked --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
@@ -230,22 +221,19 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
   ).trim();
 
   if (approvalCheck === 'true') {
-    console.log('  ✅ VaultRelayer approved in Balancer Vault!');
+    logger.info(indent('VaultRelayer approved in Balancer Vault'));
   } else {
     throw new Error('Failed to approve VaultRelayer in Balancer Vault');
   }
 
-  console.log('');
-  console.log('✅ VaultRelayer approval configured!');
-  console.log('');
+  logger.info('VaultRelayer approval configured successfully');
 
   // Step 3.4: Initialize Solver Authentication
   printSection('STEP 3.4: Initializing Solver Authentication');
 
   const ALICE_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
-  console.log(`Setting up solver authentication...`);
-  console.log(`  Solver address (Alice): ${ALICE_ADDRESS}`);
-  console.log('');
+  logger.debug('Setting up solver authentication');
+  logger.debug(indent(`Solver address (Alice): ${ALICE_ADDRESS}`));
 
   // Read manager address directly from storage slot 0
   const managerRaw = execSync(
@@ -255,12 +243,11 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
 
   // Convert from bytes32 to address (last 20 bytes)
   const managerAddress = '0x' + managerRaw.slice(-40);
-  console.log(`  Current manager (from slot 0): ${managerAddress}`);
+  logger.trace(indent(`Current manager (from slot 0): ${managerAddress}`));
 
   // Instead of trying to call addSolver, directly set the storage slot for Alice
   // The solvers mapping is at slot 1: keccak256(abi.encode(address, 1))
-  console.log('');
-  console.log('Adding Alice as a solver by setting storage directly...');
+  logger.debug('Adding Alice as a solver by setting storage directly');
 
   // Calculate storage slot for Alice in the solvers mapping (slot 1)
   const aliceSlot = execSync(
@@ -268,18 +255,16 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
     { encoding: 'utf8' }
   ).trim();
 
-  console.log(`  Alice's solver slot: ${aliceSlot}`);
+  logger.trace(indent(`Alice's solver slot: ${aliceSlot}`));
 
   // Set Alice as solver (true = 0x01)
-  console.log('  Setting Alice as solver in storage...');
+  logger.trace(indent('Setting Alice as solver in storage'));
   execSync(
     `cast rpc anvil_setStorageAt ${authenticator} ${aliceSlot} 0x0000000000000000000000000000000000000000000000000000000000000001 --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
-  console.log('');
-  console.log('✅ Solver authentication configured!');
-  console.log('');
+  logger.info('Solver authentication configured successfully');
 
   const addresses: CowProtocolAddresses = {
     authenticator,
@@ -288,12 +273,11 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
     balancerVault,
   };
 
-  console.log('📝 Deployed CoW Protocol addresses:');
+  logger.info('Deployed CoW Protocol addresses:');
   printDeployment('Authenticator', addresses.authenticator);
   printDeployment('Settlement', addresses.settlement);
   printDeployment('Vault Relayer', addresses.vaultRelayer);
   printDeployment('Balancer Vault', addresses.balancerVault);
-  console.log('');
 
   return addresses;
 }
