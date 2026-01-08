@@ -7,6 +7,7 @@ import { promisify } from 'util';
 import * as path from 'path';
 import { DeploymentConfig, TokenAddresses, UniswapAddresses, CowProtocolAddresses } from './types';
 import { runForgeScript, printSection } from './utils';
+import { loadBalancesConfig } from './balances-config';
 import { logger, indent } from './logger';
 
 const execAsync = promisify(exec);
@@ -16,7 +17,18 @@ export async function addLiquidity(
   tokens: TokenAddresses,
   uniswap: UniswapAddresses
 ): Promise<void> {
-  printSection('STEP 4: Adding Initial Liquidity');
+  printSection('STEP 6: Adding Initial Liquidity');
+
+  // Load liquidity amounts from config
+  const balancesConfig = loadBalancesConfig();
+  const liquidityEnv: { [key: string]: string } = {};
+
+  // Map config to environment variables for Solidity script
+  Object.entries(balancesConfig.defi.uniswapV2).forEach(([pairName, amounts]) => {
+    const envPrefix = `LIQUIDITY_${pairName.toUpperCase()}`;
+    liquidityEnv[`${envPrefix}_TOKEN0`] = amounts.token0Amount;
+    liquidityEnv[`${envPrefix}_TOKEN1`] = amounts.token1Amount;
+  });
 
   await runForgeScript(
     'contracts/script/AddLiquidityDirect.s.sol',
@@ -42,6 +54,7 @@ export async function addLiquidity(
         PAIR_DAI_USDT: uniswap.pairs.DAI_USDT,
         PAIR_DAI_GNO: uniswap.pairs.DAI_GNO,
         PAIR_USDT_GNO: uniswap.pairs.USDT_GNO,
+        ...liquidityEnv,
       },
     }
   );
@@ -55,7 +68,7 @@ export async function initializeRouter(
   uniswap: UniswapAddresses,
   cowProtocol: CowProtocolAddresses
 ): Promise<void> {
-  printSection('STEP 4.5: Initializing Uniswap Router (Token Approvals)');
+  printSection('STEP 6.1: Initializing Uniswap Router (Token Approvals)');
 
   // Use cast with anvil_impersonateAccount to set approvals
   // This creates real transactions that persist in Anvil state

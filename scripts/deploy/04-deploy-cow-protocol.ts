@@ -14,7 +14,7 @@ import { execSync } from 'child_process';
 import { logger, indent } from './logger';
 
 export async function deployCowProtocol(config: DeploymentConfig): Promise<CowProtocolAddresses> {
-  printSection('STEP 3: Deploying CoW Protocol (Settlement + Auth)');
+  printSection('STEP 4: Deploying CoW Protocol (Settlement + Auth)');
 
   // Mainnet Balancer Vault address and deployer
   const MAINNET_BALANCER_VAULT = '0xba12222222228d8Ba445958a75a0704d566BF2C8';
@@ -186,8 +186,8 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
 
   logger.info('CoW Protocol deployed at mainnet addresses successfully');
 
-  // Step 3.3: Approve VaultRelayer in Balancer Vault
-  printSection('STEP 3.3: Approving VaultRelayer in Balancer Vault');
+  // Step 4.1: Approve VaultRelayer in Balancer Vault
+  printSection('STEP 4.1: Approving VaultRelayer in Balancer Vault');
   logger.debug('The Settlement contract needs to approve the VaultRelayer in the Balancer Vault');
   logger.debug(indent(`Settlement: ${settlement}`));
   logger.debug(indent(`VaultRelayer: ${vaultRelayer}`));
@@ -229,7 +229,7 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
   logger.info('VaultRelayer approval configured successfully');
 
   // Step 3.4: Initialize Solver Authentication
-  printSection('STEP 3.4: Initializing Solver Authentication');
+  printSection('STEP 4.2: Initializing Solver Authentication');
 
   const ALICE_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
   logger.debug('Setting up solver authentication');
@@ -284,6 +284,6 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
 
 // If run directly
 if (require.main === module) {
-  console.error('❌ This script should be run via the main deploy-all.ts script');
+  logger.error('This script should be run via the main deploy-all.ts script');
   process.exit(1);
 }

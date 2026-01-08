@@ -15,14 +15,15 @@ import {
 } from './deploy/utils';
 import { logger } from './deploy/logger';
 import { deployMulticall3 } from './deploy/00-deploy-multicall3';
-import { deployTokens } from './deploy/01-deploy-tokens';
-import { deployUniswap } from './deploy/02-deploy-uniswap';
-import { deployCowProtocol } from './deploy/03-deploy-cow-protocol';
-import { deployAuxiliary } from './deploy/04-deploy-auxiliary';
-import { addLiquidity, initializeRouter } from './deploy/05-add-liquidity';
-import { deployComposableCow } from './deploy/06-deploy-composable-cow';
-import { deploySafe } from './deploy/07-deploy-safe';
-import { deployMockOracles } from './deploy/08-deploy-mock-oracles';
+import { deployTokens } from './deploy/02-deploy-tokens';
+import { deployUniswap } from './deploy/03-deploy-uniswap';
+import { deployCowProtocol } from './deploy/04-deploy-cow-protocol';
+import { deployAuxiliary } from './deploy/05-deploy-auxiliary';
+import { addLiquidity, initializeRouter } from './deploy/06-add-liquidity';
+import { fundUsers } from './deploy/07-fund-users';
+import { deployComposableCow } from './deploy/08-deploy-composable-cow';
+import { deploySafe } from './deploy/09-deploy-safe';
+import { deployMockOracles } from './deploy/10-deploy-mock-oracles';
 
 // ============================================================================
 // CONFIGURATION - Edit these constants as needed
@@ -53,38 +54,41 @@ async function main() {
   fs.mkdirSync(stateDir, { recursive: true });
 
   try {
-    // Step 0: Deploy Multicall3
+    // Step 1: Deploy Multicall3
     await deployMulticall3(config);
 
-    // Step 1: Deploy Tokens
+    // Step 2: Deploy Tokens
     const tokens = await deployTokens(config);
 
-    // Step 2: Deploy Uniswap V2
+    // Step 3: Deploy Uniswap V2
     const uniswap = await deployUniswap(config, tokens);
 
-    // Step 3: Deploy CoW Protocol Core
+    // Step 4: Deploy CoW Protocol Core
     const cowProtocol = await deployCowProtocol(config);
 
-    // Step 4: Deploy Auxiliary Contracts
+    // Step 5: Deploy Auxiliary Contracts
     const auxiliary = await deployAuxiliary(config, cowProtocol);
 
-    // Step 5: Add Liquidity
+    // Step 6: Add Liquidity
     await addLiquidity(config, tokens, uniswap);
 
-    // Step 6: Initialize Router
+    // Step 7: Initialize Router
     await initializeRouter(config, tokens, uniswap, cowProtocol);
 
-    // Step 7: Deploy ComposableCow
+    // Step 8: Fund Users
+    await fundUsers(config, tokens);
+
+    // Step 9: Deploy ComposableCow
     const composableCow = await deployComposableCow(config);
 
-    // Step 8: Deploy Safe Wallet Infrastructure
+    // Step 10: Deploy Safe Wallet Infrastructure
     const safe = await deploySafe(config);
 
-    // Step 9: Deploy Mock Chainlink Oracles
+    // Step 11: Deploy Mock Chainlink Oracles
     const mockOracles = await deployMockOracles(config);
 
-    // Step 10: Save oracle addresses to .env file
-    printSection('STEP 10: Saving Oracle Addresses to .env');
+    // Step 12: Save oracle addresses to .env file
+    printSection('STEP 12: Saving Oracle Addresses to .env');
     const envPath = path.join(__dirname, '../.env');
 
     // Read current .env file

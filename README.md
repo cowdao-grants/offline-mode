@@ -233,6 +233,215 @@ If you want to redeploy everything from scratch:
 
    No manual deployment scripts are needed - everything is handled automatically by Docker!
 
+## Configuring Balances
+
+The playground uses a centralized configuration file to manage initial token supplies, liquidity pool amounts, and user wallet balances. This makes it easy to customize the environment without modifying code.
+
+### Configuration File: `config/balances.json`
+
+The configuration file has three main sections:
+
+#### 1. Token Initial Supplies
+
+Defines how many tokens to mint to the deployer account during deployment:
+
+```json
+{
+  "tokens": {
+    "WETH": {
+      "decimals": 18,
+      "initialSupply": "5000000000000000000000"  // 5,000 WETH
+    },
+    "USDC": {
+      "decimals": 6,
+      "initialSupply": "15000000000000"  // 15 million USDC
+    }
+    // ... other tokens
+  }
+}
+```
+
+#### 2. DeFi Protocol Liquidity
+
+Defines liquidity amounts for DEX pools. Organized by protocol for future extensibility:
+
+```json
+{
+  "defi": {
+    "uniswapV2": {
+      "WETH_USDC": {
+        "token0Amount": "1000000000000000000000",  // 1000 WETH
+        "token1Amount": "3000000000000"             // 3M USDC
+      }
+      // ... other pairs
+    }
+    // Future protocols like Balancer, Curve can be added here
+  }
+}
+```
+
+**Why this structure?** The nested `defi.uniswapV2` structure allows you to add other DeFi protocols in the future (e.g., `defi.balancer`, `defi.curve`) without conflicts.
+
+#### 3. User Wallets
+
+Defines which wallets should receive tokens during deployment:
+
+```json
+{
+  "users": {
+    "alice": {
+      "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      "tokens": {
+        "WETH": "100000000000000000000",   // 100 WETH
+        "USDC": "100000000000",            // 100 USDC
+        "DAI": "100000000000000000000000"  // 100K DAI
+      }
+    }
+    // ... other users
+  }
+}
+```
+
+### Adding Your Own Wallet
+
+To receive tokens in your wallet during deployment, simply add it to the `users` section:
+
+```json
+{
+  "users": {
+    "myWallet": {
+      "address": "0xYourWalletAddressHere",
+      "tokens": {
+        "WETH": "1000000000000000000000",    // 1,000 WETH
+        "USDC": "1000000000",                // 1,000 USDC
+        "DAI": "5000000000000000000000000",  // 5M DAI
+        "USDT": "1000000000",                // 1,000 USDT
+        "GNO": "10000000000000000000000"     // 10,000 GNO
+      }
+    }
+  }
+}
+```
+
+After editing the file, redeploy to apply changes:
+
+```bash
+# Delete existing state
+rm offline-mode/state/anvil-state.json
+
+# Redeploy (will fund all configured users)
+docker-compose -f docker-compose.offline.yml up -d
+```
+
+### Pre-configured Test Users
+
+The playground comes with test users pre-configured:
+
+| User | Address | WETH | DAI | Notes |
+|------|---------|------|-----|-------|
+| **alice** | `0x7099...79C8` | 100 | 100K | Anvil account #1 |
+| **bob** | `0x3C44...293BC` | 50 | 50K | Anvil account #2 |
+| **charlie** | `0x90F7...3b906` | 75 | 75K | Anvil account #3 |
+
+These addresses correspond to Anvil's default test accounts, so you can use their private keys for testing.
+
+### Modifying Token Amounts
+
+To change how much of a token is available:
+
+**For liquidity pools:**
+```json
+"defi": {
+  "uniswapV2": {
+    "WETH_DAI": {
+      "token0Amount": "2000000000000000000000",  // Change from 1000 to 2000 WETH
+      "token1Amount": "6000000000000000000000000" // Change from 3M to 6M DAI
+    }
+  }
+}
+```
+
+**For user wallets:**
+```json
+"users": {
+  "alice": {
+    "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    "tokens": {
+      "WETH": "500000000000000000000"  // Change from 100 to 500 WETH
+    }
+  }
+}
+```
+
+### Understanding Token Decimals
+
+When specifying amounts, remember to account for decimals:
+
+| Token | Decimals | Example Amount | Human Readable |
+|-------|----------|----------------|----------------|
+| WETH | 18 | `1000000000000000000` | 1 WETH |
+| USDC | 6 | `1000000` | 1 USDC |
+| DAI | 18 | `1000000000000000000` | 1 DAI |
+| USDT | 6 | `1000000` | 1 USDT |
+| GNO | 18 | `1000000000000000000` | 1 GNO |
+
+**Quick reference:**
+- 18 decimals: multiply by `10^18` (or append 18 zeros)
+- 6 decimals: multiply by `10^6` (or append 6 zeros)
+
+### Future Protocol Support
+
+The `defi` section is designed to support multiple protocols. In the future, you can add:
+
+```json
+{
+  "defi": {
+    "uniswapV2": { /* existing config */ },
+    "balancer": {
+      "WETH_DAI_USDC_POOL": {
+        "wethAmount": "1000000000000000000000",
+        "daiAmount": "1000000000000000000000000",
+        "usdcAmount": "1000000000000"
+      }
+    },
+    "curve": {
+      "3POOL": {
+        "daiAmount": "1000000000000000000000000",
+        "usdcAmount": "1000000000000",
+        "usdtAmount": "1000000000000"
+      }
+    }
+  }
+}
+```
+
+### Verifying Balances
+
+After deployment, verify that wallets received the correct amounts:
+
+```bash
+# Check WETH balance for a wallet
+cast call 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 "balanceOf(address)(uint256)" YOUR_WALLET_ADDRESS --rpc-url http://localhost:8545
+
+# Check USDC balance
+cast call 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 "balanceOf(address)(uint256)" YOUR_WALLET_ADDRESS --rpc-url http://localhost:8545
+
+# Check DAI balance
+cast call 0x6B175474E89094C44Da98b954EedeAC495271d0F "balanceOf(address)(uint256)" YOUR_WALLET_ADDRESS --rpc-url http://localhost:8545
+```
+
+### Token Addresses (Mainnet Compatible)
+
+All tokens are deployed at their mainnet addresses for compatibility:
+
+| Token | Address |
+|-------|---------|
+| WETH | `0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2` |
+| USDC | `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48` |
+| DAI | `0x6B175474E89094C44Da98b954EedeAC495271d0F` |
+| USDT | `0xdAC17F958D2ee523a2206206994597C13D831ec7` |
+| GNO | `0x6810e776880C02933D47DB1b9fc05908e5386b96` |
+
 ## Configuration Files
 
 ### Docker Configuration

@@ -21,7 +21,7 @@ export interface SafeAddresses {
 }
 
 export async function deploySafe(config: DeploymentConfig): Promise<SafeAddresses> {
-  printSection('STEP 7: Deploying Safe Wallet Infrastructure');
+  printSection('STEP 9: Deploying Safe Wallet Infrastructure');
 
   const mainnetRpcUrl = process.env.MAINNET_RPC_URL || 'https://eth.llamarpc.com';
 
@@ -33,7 +33,7 @@ export async function deploySafe(config: DeploymentConfig): Promise<SafeAddresse
   logger.debug('Deploying Safe contracts at mainnet addresses');
 
   // Step 7.1: Deploy Safe Singleton
-  printSection('STEP 7.1: Deploying Safe Singleton');
+  printSection('STEP 9.1: Deploying Safe Singleton');
 
   logger.debug('Fetching Safe Singleton bytecode from mainnet');
   const singletonBytecode = execSync(
@@ -55,7 +55,7 @@ export async function deploySafe(config: DeploymentConfig): Promise<SafeAddresse
   printDeployment('Singleton', singleton);
 
   // Step 7.2: Deploy Safe Proxy Factory
-  printSection('STEP 7.2: Deploying Safe Proxy Factory');
+  printSection('STEP 9.2: Deploying Safe Proxy Factory');
 
   logger.debug('Fetching Safe Proxy Factory bytecode from mainnet');
   const proxyFactoryBytecode = execSync(
@@ -77,7 +77,7 @@ export async function deploySafe(config: DeploymentConfig): Promise<SafeAddresse
   printDeployment('Factory', proxyFactory);
 
   // Step 7.3: Deploy Compatibility Fallback Handler
-  printSection('STEP 7.3: Deploying Compatibility Fallback Handler');
+  printSection('STEP 9.3: Deploying Compatibility Fallback Handler');
 
   logger.debug('Fetching Compatibility Fallback Handler bytecode from mainnet');
   const compatibilityHandlerBytecode = execSync(
@@ -99,7 +99,7 @@ export async function deploySafe(config: DeploymentConfig): Promise<SafeAddresse
   printDeployment('Handler', compatibilityFallbackHandler);
 
   // Step 7.4: Create Safe for test user
-  printSection('STEP 7.4: Creating Safe Wallet for Test User');
+  printSection('STEP 9.4: Creating Safe Wallet for Test User');
 
   const testUserAddress = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8'; // Anvil account #1
   const extensibleFallbackHandler = process.env.EXTENSIBLE_FALLBACK_HANDLER_ADDRESS || '0x2f55e8b20D0B9FEFA187AA7d00B6Cbe563605bF5';
@@ -215,7 +215,7 @@ export async function deploySafe(config: DeploymentConfig): Promise<SafeAddresse
   }
 
   // Step 7.5: Configure ComposableCoW as domain verifier for Safe
-  printSection('STEP 7.5: Configure ComposableCoW Domain Verifier');
+  printSection('STEP 9.5: Configure ComposableCoW Domain Verifier');
 
   const settlementAddress = process.env.SETTLEMENT_CONTRACT_ADDRESS || '0x9008D19f58AAbD9eD0D60971565AA8510560ab41';
   const composableCoWAddress = process.env.COMPOSABLE_COW_ADDRESS || '0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74';

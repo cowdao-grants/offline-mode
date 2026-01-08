@@ -10,11 +10,12 @@ import {
   printSection,
   printDeployment,
 } from './utils';
+import { loadBalancesConfig } from './balances-config';
 import { execSync } from 'child_process';
 import { logger, indent } from './logger';
 
 export async function deployTokens(config: DeploymentConfig): Promise<TokenAddresses> {
-  printSection('STEP 1: Deploying Tokens (WETH, USDC, DAI, USDT, GNO) at mainnet addresses');
+  printSection('STEP 2: Deploying Tokens (WETH, USDC, DAI, USDT, GNO) at mainnet addresses');
 
   // Mainnet token addresses
   const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
@@ -80,12 +81,13 @@ export async function deployTokens(config: DeploymentConfig): Promise<TokenAddre
   // Mint tokens to deployer
   logger.debug('Minting tokens to deployer');
 
-  // Token supply constants - sufficient for deep liquidity pools
-  const WETH_SUPPLY = 5_000_000_000_000_000_000_000n.toString(); // 5,000 WETH (18 decimals) - enough for 4 pools @ 1000 each
-  const USDC_SUPPLY = 15_000_000_000_000n.toString(); // 15 million USDC (6 decimals) - enough for deep liquidity
-  const DAI_SUPPLY = 15_000_000_000_000_000_000_000_000n.toString(); // 15 million DAI (18 decimals) - enough for deep liquidity
-  const USDT_SUPPLY = 15_000_000_000_000n.toString(); // 15 million USDT (6 decimals) - enough for deep liquidity
-  const GNO_SUPPLY = 100_000_000_000_000_000_000_000n.toString(); // 100,000 GNO (18 decimals) - enough for deep liquidity
+  // Load token supply constants from config
+  const balancesConfig = loadBalancesConfig();
+  const WETH_SUPPLY = balancesConfig.tokens.WETH.initialSupply;
+  const USDC_SUPPLY = balancesConfig.tokens.USDC.initialSupply;
+  const DAI_SUPPLY = balancesConfig.tokens.DAI.initialSupply;
+  const USDT_SUPPLY = balancesConfig.tokens.USDT.initialSupply;
+  const GNO_SUPPLY = balancesConfig.tokens.GNO.initialSupply;
 
   // Wrap ETH to WETH
   logger.trace(indent('Wrapping ETH to WETH'));

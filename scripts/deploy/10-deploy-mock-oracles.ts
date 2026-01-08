@@ -24,7 +24,7 @@ export interface MockOracleAddresses {
 export async function deployMockOracles(
   config: DeploymentConfig
 ): Promise<MockOracleAddresses> {
-  printSection('STEP 8: Deploying Mock Chainlink Oracles');
+  printSection('STEP 10: Deploying Mock Chainlink Oracles');
 
   logger.debug('Deploying mock Chainlink oracles for all base tokens');
   logger.trace(indent('Forge script will compile contracts automatically'));

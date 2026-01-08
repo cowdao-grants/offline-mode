@@ -9,7 +9,7 @@ import { printSection, printDeployment } from './utils';
 import { logger, indent } from './logger';
 
 export async function deployMulticall3(config: DeploymentConfig): Promise<string> {
-  printSection('STEP 0: Deploying Multicall3 Contract');
+  printSection('STEP 1: Deploying Multicall3 Contract');
 
   const multicall3Address = '0xcA11bde05977b3631167028862bE2a173976CA11';
   const mainnetRpcUrl = process.env.MAINNET_RPC_URL || 'https://eth.llamarpc.com';

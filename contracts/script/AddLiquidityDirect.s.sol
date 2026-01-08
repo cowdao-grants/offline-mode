@@ -57,34 +57,49 @@ contract AddLiquidityDirect is Script {
         console.log("  GNO:", gno);
         console.log("");
 
+        // Load liquidity amounts from environment variables
+        uint256 wethUsdcWeth = vm.envUint("LIQUIDITY_WETH_USDC_TOKEN0");
+        uint256 wethUsdcUsdc = vm.envUint("LIQUIDITY_WETH_USDC_TOKEN1");
+        uint256 wethDaiWeth = vm.envUint("LIQUIDITY_WETH_DAI_TOKEN0");
+        uint256 wethDaiDai = vm.envUint("LIQUIDITY_WETH_DAI_TOKEN1");
+        uint256 wethUsdtWeth = vm.envUint("LIQUIDITY_WETH_USDT_TOKEN0");
+        uint256 wethUsdtUsdt = vm.envUint("LIQUIDITY_WETH_USDT_TOKEN1");
+        uint256 wethGnoWeth = vm.envUint("LIQUIDITY_WETH_GNO_TOKEN0");
+        uint256 wethGnoGno = vm.envUint("LIQUIDITY_WETH_GNO_TOKEN1");
+        uint256 usdcDaiUsdc = vm.envUint("LIQUIDITY_USDC_DAI_TOKEN0");
+        uint256 usdcDaiDai = vm.envUint("LIQUIDITY_USDC_DAI_TOKEN1");
+        uint256 usdcUsdtUsdc = vm.envUint("LIQUIDITY_USDC_USDT_TOKEN0");
+        uint256 usdcUsdtUsdt = vm.envUint("LIQUIDITY_USDC_USDT_TOKEN1");
+        uint256 usdcGnoUsdc = vm.envUint("LIQUIDITY_USDC_GNO_TOKEN0");
+        uint256 usdcGnoGno = vm.envUint("LIQUIDITY_USDC_GNO_TOKEN1");
+        uint256 daiUsdtDai = vm.envUint("LIQUIDITY_DAI_USDT_TOKEN0");
+        uint256 daiUsdtUsdt = vm.envUint("LIQUIDITY_DAI_USDT_TOKEN1");
+        uint256 daiGnoDai = vm.envUint("LIQUIDITY_DAI_GNO_TOKEN0");
+        uint256 daiGnoGno = vm.envUint("LIQUIDITY_DAI_GNO_TOKEN1");
+        uint256 usdtGnoUsdt = vm.envUint("LIQUIDITY_USDT_GNO_TOKEN0");
+        uint256 usdtGnoGno = vm.envUint("LIQUIDITY_USDT_GNO_TOKEN1");
+
         vm.startBroadcast(deployerPrivateKey);
 
         // Add liquidity to all pairs with DEEP liquidity to prevent slippage
 
         console.log("Adding liquidity to WETH pairs...");
-        // 1000 WETH paired with 3M stablecoins = 3000 stables per WETH
-        addLiquidityToPair(factory, weth, usdc, 1000 ether, 3_000_000 * 1e6, deployer);
-        addLiquidityToPair(factory, weth, dai, 1000 ether, 3_000_000 * 1e18, deployer);
-        addLiquidityToPair(factory, weth, usdt, 1000 ether, 3_000_000 * 1e6, deployer);
-        // 1000 WETH paired with 30,000 GNO = 30 GNO per WETH (or 100 stables per GNO)
-        addLiquidityToPair(factory, weth, gno, 1000 ether, 30_000 * 1e18, deployer);
+        addLiquidityToPair(factory, weth, usdc, wethUsdcWeth, wethUsdcUsdc, deployer);
+        addLiquidityToPair(factory, weth, dai, wethDaiWeth, wethDaiDai, deployer);
+        addLiquidityToPair(factory, weth, usdt, wethUsdtWeth, wethUsdtUsdt, deployer);
+        addLiquidityToPair(factory, weth, gno, wethGnoWeth, wethGnoGno, deployer);
 
         console.log("Adding liquidity to USDC pairs...");
-        // 1M USDC paired with 1M DAI/USDT = 1:1 ratio
-        addLiquidityToPair(factory, usdc, dai, 1_000_000 * 1e6, 1_000_000 * 1e18, deployer);
-        addLiquidityToPair(factory, usdc, usdt, 1_000_000 * 1e6, 1_000_000 * 1e6, deployer);
-        // 1M USDC paired with 10,000 GNO = 100 USDC per GNO
-        addLiquidityToPair(factory, usdc, gno, 1_000_000 * 1e6, 10_000 * 1e18, deployer);
+        addLiquidityToPair(factory, usdc, dai, usdcDaiUsdc, usdcDaiDai, deployer);
+        addLiquidityToPair(factory, usdc, usdt, usdcUsdtUsdc, usdcUsdtUsdt, deployer);
+        addLiquidityToPair(factory, usdc, gno, usdcGnoUsdc, usdcGnoGno, deployer);
 
         console.log("Adding liquidity to DAI pairs...");
-        // 1M DAI paired with 1M USDT = 1:1 ratio
-        addLiquidityToPair(factory, dai, usdt, 1_000_000 * 1e18, 1_000_000 * 1e6, deployer);
-        // 1M DAI paired with 10,000 GNO = 100 DAI per GNO
-        addLiquidityToPair(factory, dai, gno, 1_000_000 * 1e18, 10_000 * 1e18, deployer);
+        addLiquidityToPair(factory, dai, usdt, daiUsdtDai, daiUsdtUsdt, deployer);
+        addLiquidityToPair(factory, dai, gno, daiGnoDai, daiGnoGno, deployer);
 
         console.log("Adding liquidity to USDT-GNO pair...");
-        // 1M USDT paired with 10,000 GNO = 100 USDT per GNO
-        addLiquidityToPair(factory, usdt, gno, 1_000_000 * 1e6, 10_000 * 1e18, deployer);
+        addLiquidityToPair(factory, usdt, gno, usdtGnoUsdt, usdtGnoGno, deployer);
 
         vm.stopBroadcast();
 
