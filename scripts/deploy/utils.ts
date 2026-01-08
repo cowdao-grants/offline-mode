@@ -7,6 +7,7 @@ import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ForgeBroadcastResult } from './types';
+import { logger, formatSection, formatDeployment, indent, formatListItem } from './logger';
 
 const execAsync = promisify(exec);
 
@@ -35,7 +36,7 @@ export async function runForgeScript(
   // Clean up any previous broadcast for this script to avoid resume errors
   const broadcastDir = path.join(__dirname, '../..', 'broadcast', `${scriptName}.s.sol`);
   if (fs.existsSync(broadcastDir)) {
-    console.log(`Removing previous broadcast directory: ${broadcastDir}`);
+    logger.debug(`Removing previous broadcast directory: ${broadcastDir}`);
     fs.rmSync(broadcastDir, { recursive: true, force: true });
   }
 
@@ -49,7 +50,7 @@ export async function runForgeScript(
     `-${'v'.repeat(verbosity)}`,
   ].filter(Boolean).join(' ');
 
-  console.log(`Running: ${args}`);
+  logger.debug(`Running: ${args}`);
 
   const envVars = {
     ...process.env,
@@ -67,10 +68,10 @@ export async function runForgeScript(
   });
 
   if (stderr && !stderr.includes('Warning')) {
-    console.error('stderr:', stderr);
+    logger.error({ stderr }, 'Command stderr output');
   }
   if (stdout) {
-    console.log(stdout);
+    logger.trace({ stdout }, 'Command stdout output');
   }
 }
 
@@ -176,10 +177,10 @@ export async function castSend(
   );
 
   if (stderr) {
-    console.error('stderr:', stderr);
+    logger.error({ stderr }, 'Command stderr output');
   }
   if (stdout) {
-    console.log(stdout);
+    logger.trace({ stdout }, 'Command stdout output');
   }
 }
 
@@ -198,39 +199,39 @@ export async function deployOnAddressWithStorage(
   contractName: string,
   storageSlots: number[] = []
 ): Promise<void> {
-  console.log(`Deploying ${contractName} at ${contractAddress}...`);
+  logger.debug(`Deploying ${contractName} at ${contractAddress}`);
 
   // Fetch bytecode from mainnet
-  console.log(`  Fetching ${contractName} bytecode from mainnet...`);
+  logger.trace(indent(`Fetching ${contractName} bytecode from mainnet`));
   const { stdout: bytecode } = await execAsync(
     `cast code ${contractAddress} --rpc-url ${mainnetRpcUrl}`
   );
   const bytecodeStr = bytecode.trim();
-  console.log(`    Bytecode length: ${bytecodeStr.length} chars`);
+  logger.trace(indent(`Bytecode length: ${bytecodeStr.length} chars`, 2));
 
   // Fetch storage from mainnet if slots specified
   const storageValues: Record<number, string> = {};
   if (storageSlots.length > 0) {
-    console.log(`  Fetching ${contractName} storage from mainnet...`);
+    logger.trace(indent(`Fetching ${contractName} storage from mainnet`));
     for (const slot of storageSlots) {
       const { stdout: value } = await execAsync(
         `cast storage ${contractAddress} ${slot} --rpc-url ${mainnetRpcUrl}`
       );
       const valueStr = value.trim();
       storageValues[slot] = valueStr;
-      console.log(`    Slot ${slot}: ${valueStr}`);
+      logger.trace(indent(`Slot ${slot}: ${valueStr}`, 2));
     }
   }
 
   // Set bytecode on local chain
-  console.log(`  Setting ${contractName} bytecode at ${contractAddress}...`);
+  logger.debug(indent(`Setting ${contractName} bytecode at ${contractAddress}`));
   await execAsync(
     `cast rpc anvil_setCode ${contractAddress} ${bytecodeStr} --rpc-url ${localRpcUrl}`
   );
 
   // Set storage on local chain if any slots were fetched
   if (storageSlots.length > 0) {
-    console.log(`  Setting ${contractName} storage...`);
+    logger.trace(indent(`Setting ${contractName} storage`));
     for (const slot of storageSlots) {
       await execAsync(
         `cast rpc anvil_setStorageAt ${contractAddress} 0x${slot.toString(16)} ${storageValues[slot]} --rpc-url ${localRpcUrl}`
@@ -238,7 +239,7 @@ export async function deployOnAddressWithStorage(
     }
   }
 
-  console.log(`  ✅ ${contractName} deployed at ${contractAddress}`);
+  logger.info(indent(`${contractName} deployed successfully at ${contractAddress}`));
 }
 
 
@@ -246,52 +247,49 @@ export async function deployOnAddressWithStorage(
  * Print a section header
  */
 export function printSection(title: string): void {
-  console.log('');
-  console.log('━'.repeat(60));
-  console.log(title);
-  console.log('━'.repeat(60));
+  logger.info(formatSection(title));
 }
 
 /**
  * Print deployment result
  */
 export function printDeployment(name: string, address: string): void {
-  console.log(`  ${name}: ${address}`);
+  logger.info(indent(formatDeployment(name, address)));
 }
 
 /**
  * Print deployment summary
  */
 export function printDeploymentSummary(): void {
-  console.log('📋 Deployment Summary:');
-  console.log('  ✅ Step 1: Tokens deployed (WETH, USDC, DAI, USDT, GNO)');
-  console.log('  ✅ Step 2: Uniswap V2 deployed (Factory, Router, 10 Pairs)');
-  console.log('  ✅ Step 3: CoW Protocol deployed (Settlement, Auth, VaultRelayer)');
-  console.log('  ✅ Step 3.5: TradeSimulator contract deployed');
-  console.log('  ✅ Step 3.6: Signatures contract deployed');
-  console.log('  ✅ Step 3.7: HooksTrampoline contract deployed');
-  console.log('  ✅ Step 3.8: CoWShed deployed (Factory, Implementation)');
-  console.log('  ✅ Step 5: Liquidity added to all pairs');
-  console.log('  ✅ Step 6: Uniswap Router initialized (token approvals)');
-  console.log('  ✅ Step 7: Addresses exported to JSON');
-  console.log('  ✅ Step 8: Configuration files generated');
+  logger.info('Deployment Summary:');
+  logger.info(indent('Step 1: Tokens deployed (WETH, USDC, DAI, USDT, GNO)'));
+  logger.info(indent('Step 2: Uniswap V2 deployed (Factory, Router, 10 Pairs)'));
+  logger.info(indent('Step 3: CoW Protocol deployed (Settlement, Auth, VaultRelayer)'));
+  logger.info(indent('Step 3.5: TradeSimulator contract deployed'));
+  logger.info(indent('Step 3.6: Signatures contract deployed'));
+  logger.info(indent('Step 3.7: HooksTrampoline contract deployed'));
+  logger.info(indent('Step 3.8: CoWShed deployed (Factory, Implementation)'));
+  logger.info(indent('Step 5: Liquidity added to all pairs'));
+  logger.info(indent('Step 6: Uniswap Router initialized (token approvals)'));
+  logger.info(indent('Step 7: Addresses exported to JSON'));
+  logger.info(indent('Step 8: Configuration files generated'));
 }
 
 /**
  * Print output files information
  */
 export function printOutputFiles(): void {
-  console.log('📁 Output files:');
-  console.log('  - playground/.env.offline (deployment addresses, auto-generated)');
-  console.log('  - offline-mode/configs/offline/driver.toml (auto-generated)');
-  console.log('  - offline-mode/configs/offline/baseline.toml (auto-generated)');
+  logger.info('Output files:');
+  logger.info(indent(formatListItem('playground/.env.offline (deployment addresses, auto-generated)')));
+  logger.info(indent(formatListItem('offline-mode/configs/offline/driver.toml (auto-generated)')));
+  logger.info(indent(formatListItem('offline-mode/configs/offline/baseline.toml (auto-generated)')));
 }
 
 /**
  * Print next steps
  */
 export function printNextSteps(): void {
-  console.log('🚀 Next: Start the full stack with:');
-  console.log('  cd ../../playground');
-  console.log('  docker compose -f docker-compose.offline.yml up');
+  logger.info('Next: Start the full stack with:');
+  logger.info(indent('cd ../../playground'));
+  logger.info(indent('docker compose -f docker-compose.offline.yml up'));
 }
