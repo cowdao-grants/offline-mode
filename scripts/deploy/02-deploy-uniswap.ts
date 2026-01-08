@@ -17,23 +17,23 @@ export async function deployUniswap(
   printSection('STEP 2: Deploying Uniswap V2 (Factory + Router) at mainnet addresses');
 
   // Mainnet deployer address for Uniswap contracts
-  const uniswapDeployer = '0x9C33eaCc2F50E39940D3AfaF2c7B8246B681A374';
-  const mainnetFactory = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
-  const mainnetRouter = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D';
+  const UNISWAP_DEPLOYER = '0x9C33eaCc2F50E39940D3AfaF2c7B8246B681A374';
+  const MAINNET_UNISWAP_FACTORY = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
+  const MAINNET_UNISWAP_ROUTER = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D';
 
   console.log('Setting up Uniswap deployer account...');
 
   // Fund the Uniswap deployer with ETH
   console.log('  Funding Uniswap deployer with ETH...');
   execSync(
-    `cast send ${uniswapDeployer} --value 100ether --private-key ${config.deployerPrivateKey} --rpc-url ${config.rpcUrl}`,
+    `cast send ${UNISWAP_DEPLOYER} --value 100ether --private-key ${config.deployerPrivateKey} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
   // Set nonce to 0 for factory deployment
   console.log('  Setting deployer nonce to 0...');
   execSync(
-    `cast rpc anvil_setNonce ${uniswapDeployer} 0x0 --rpc-url ${config.rpcUrl}`,
+    `cast rpc anvil_setNonce ${UNISWAP_DEPLOYER} 0x0 --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
@@ -48,7 +48,7 @@ export async function deployUniswap(
 
   // Encode factory constructor parameters (feeToSetter = uniswapDeployer)
   const factoryConstructorArgs = execSync(
-    `cast abi-encode "constructor(address)" ${uniswapDeployer}`,
+    `cast abi-encode "constructor(address)" ${UNISWAP_DEPLOYER}`,
     { encoding: 'utf8' }
   ).trim();
 
@@ -73,11 +73,11 @@ export async function deployUniswap(
   // Set the runtime bytecode at the mainnet address
   console.log('  Setting Factory bytecode at mainnet address...');
   execSync(
-    `cast rpc anvil_setCode ${mainnetFactory} ${factoryRuntimeBytecode} --rpc-url ${config.rpcUrl}`,
+    `cast rpc anvil_setCode ${MAINNET_UNISWAP_FACTORY} ${factoryRuntimeBytecode} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
-  console.log('  ✅ Factory deployed at mainnet address:', mainnetFactory);
+  console.log('  ✅ Factory deployed at mainnet address:', MAINNET_UNISWAP_FACTORY);
 
   // Get Router bytecode from npm package and construct with MAINNET factory address
   console.log('');
@@ -89,14 +89,14 @@ export async function deployUniswap(
 
   // Encode router constructor parameters with MAINNET factory address
   const routerConstructorArgs = execSync(
-    `cast abi-encode "constructor(address,address)" ${mainnetFactory} ${tokens.WETH}`,
+    `cast abi-encode "constructor(address,address)" ${MAINNET_UNISWAP_FACTORY} ${tokens.WETH}`,
     { encoding: 'utf8' }
   ).trim();
 
   // Combine creation code with constructor args
   const routerBytecode = routerCreationCode + routerConstructorArgs.slice(2); // Remove 0x prefix from args
 
-  console.log('  Deploying Router to temporary address with mainnet factory:', mainnetFactory);
+  console.log('  Deploying Router to temporary address with mainnet factory:', MAINNET_UNISWAP_FACTORY);
   const routerDeployOutput = execSync(
     `FOUNDRY_DISABLE_NIGHTLY_WARNING=1 cast send --rpc-url ${config.rpcUrl} --private-key ${config.deployerPrivateKey} --create ${routerBytecode} --json`,
     { encoding: 'utf8' }
@@ -114,11 +114,11 @@ export async function deployUniswap(
   // Set the runtime bytecode at the mainnet address
   console.log('  Setting Router bytecode at mainnet address...');
   execSync(
-    `cast rpc anvil_setCode ${mainnetRouter} ${routerRuntimeBytecode} --rpc-url ${config.rpcUrl}`,
+    `cast rpc anvil_setCode ${MAINNET_UNISWAP_ROUTER} ${routerRuntimeBytecode} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 
-  console.log('  ✅ Router deployed at mainnet address:', mainnetRouter);
+  console.log('  ✅ Router deployed at mainnet address:', MAINNET_UNISWAP_ROUTER);
 
   // Now create pairs using the mainnet factory
   console.log('');
@@ -144,13 +144,13 @@ export async function deployUniswap(
 
     // Create the pair
     execSync(
-      `cast send ${mainnetFactory} "createPair(address,address)" ${pair.token0} ${pair.token1} --private-key ${config.deployerPrivateKey} --rpc-url ${config.rpcUrl}`,
+      `cast send ${MAINNET_UNISWAP_FACTORY} "createPair(address,address)" ${pair.token0} ${pair.token1} --private-key ${config.deployerPrivateKey} --rpc-url ${config.rpcUrl}`,
       { stdio: 'inherit' }
     );
 
     // Get the pair address by calling getPair
     const pairAddress = execSync(
-      `cast call ${mainnetFactory} "getPair(address,address)(address)" ${pair.token0} ${pair.token1} --rpc-url ${config.rpcUrl}`,
+      `cast call ${MAINNET_UNISWAP_FACTORY} "getPair(address,address)(address)" ${pair.token0} ${pair.token1} --rpc-url ${config.rpcUrl}`,
       { encoding: 'utf8' }
     ).trim();
 
@@ -158,8 +158,8 @@ export async function deployUniswap(
     console.log(`    ✅ ${pair.name} pair created at:`, pairAddress);
   }
 
-  const factory = mainnetFactory;
-  const router = mainnetRouter;
+  const factory = MAINNET_UNISWAP_FACTORY;
+  const router = MAINNET_UNISWAP_ROUTER;
 
   // Use the created pair addresses
   const pairs = {
