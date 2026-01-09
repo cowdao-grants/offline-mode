@@ -13,7 +13,7 @@
  */
 
 import { ethers } from 'ethers';
-import { loadAddresses } from './utils/loadAddresses';
+import { loadAddresses } from '../../test/utils/loadAddresses';
 
 // Configuration
 const CONFIG = {

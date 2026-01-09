@@ -14,7 +14,7 @@ import {
   printNextSteps,
 } from './deploy/utils';
 import { logger } from './deploy/logger';
-import { deployMulticall3 } from './deploy/00-deploy-multicall3';
+import { deployMulticall3 } from './deploy/01-deploy-multicall3';
 import { deployTokens } from './deploy/02-deploy-tokens';
 import { deployUniswap } from './deploy/03-deploy-uniswap';
 import { deployCowProtocol } from './deploy/04-deploy-cow-protocol';
