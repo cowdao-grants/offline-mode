@@ -24,15 +24,9 @@ export async function deployTokens(config: DeploymentConfig): Promise<TokenAddre
   const USDT = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
   const GNO = '0x6810e776880C02933D47DB1b9fc05908e5386b96';
 
-  // Deploy WETH at mainnet address using cast rpc anvil_setCode
-  const mainnetRpcUrl = process.env.MAINNET_RPC_URL || 'https://eth.llamarpc.com';
-  logger.debug('Deploying WETH at mainnet address');
-  const wethBytecode = execSync(
-    `cast code ${WETH} --rpc-url ${mainnetRpcUrl}`,
-    { encoding: 'utf8' }
-  ).trim();
-  execSync(`cast rpc anvil_setCode ${WETH} ${wethBytecode} --rpc-url ${config.rpcUrl}`, { stdio: 'inherit' });
-  logger.info('WETH bytecode set successfully');
+  // Deploy WETH using TestERC20 bytecode (so we can mint unlimited amounts)
+  logger.debug('Deploying WETH using TestERC20 bytecode');
+  // We'll set the bytecode after deploying TestERC20 tokens below
 
   // Run the forge script to deploy TestERC20 tokens
   logger.debug('Deploying TestERC20 tokens temporarily to get bytecode');
@@ -59,6 +53,9 @@ export async function deployTokens(config: DeploymentConfig): Promise<TokenAddre
 
   // Now deploy the TestERC20 bytecode at mainnet addresses using anvil_setCode
   logger.debug('Deploying tokens at mainnet addresses');
+
+  logger.debug(indent(`Setting WETH bytecode at ${WETH}`));
+  execSync(`cast rpc anvil_setCode ${WETH} ${testERC20Bytecode} --rpc-url ${config.rpcUrl}`, { stdio: 'inherit' });
 
   logger.debug(indent(`Setting USDC bytecode at ${USDC}`));
   execSync(`cast rpc anvil_setCode ${USDC} ${testERC20Bytecode} --rpc-url ${config.rpcUrl}`, { stdio: 'inherit' });
@@ -89,10 +86,10 @@ export async function deployTokens(config: DeploymentConfig): Promise<TokenAddre
   const USDT_SUPPLY = balancesConfig.tokens.USDT.initialSupply;
   const GNO_SUPPLY = balancesConfig.tokens.GNO.initialSupply;
 
-  // Wrap ETH to WETH
-  logger.trace(indent('Wrapping ETH to WETH'));
+  // Mint WETH (treat as ERC20 instead of wrapping ETH)
+  logger.trace(indent('Minting WETH'));
   execSync(
-    `cast send ${WETH} "deposit()" --value ${WETH_SUPPLY} --private-key ${config.deployerPrivateKey} --rpc-url ${config.rpcUrl}`,
+    `cast send ${WETH} "mint(address,uint256)" ${deployerAddress} ${WETH_SUPPLY} --private-key ${config.deployerPrivateKey} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
 

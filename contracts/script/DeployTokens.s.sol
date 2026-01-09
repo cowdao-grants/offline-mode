@@ -3,23 +3,20 @@ pragma solidity ^0.8.26;
 
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
-import {WETH} from "solmate/tokens/WETH.sol";
 import {TestERC20} from "../src/tokens/TestERC20.sol";
 import {DeploymentUtils} from "./Utils.sol";
 
 /// @title DeployTokens
-/// @notice Deploy WETH, USDC, DAI, USDT, and GNO for PoC using CREATE2
+/// @notice Deploy USDC, DAI, USDT, and GNO for PoC using CREATE2
+/// @dev WETH is deployed separately via TypeScript using TestERC20 bytecode
 contract DeployTokens is Script {
-    // Token supply constants
-    // Note: Anvil accounts start with 10,000 ETH, but some is spent on gas
-    uint256 constant WETH_SUPPLY = 1_000 ether; // 1,000 WETH
+    // Token supply constants (only for temporary deployment to get bytecode)
     uint256 constant USDC_SUPPLY = 1_000_000 * 1e6; // 1 million USDC
     uint256 constant DAI_SUPPLY = 1_000_000 ether; // 1 million DAI
     uint256 constant USDT_SUPPLY = 1_000_000 * 1e6; // 1 million USDT (6 decimals)
     uint256 constant GNO_SUPPLY = 1_000_000 ether; // 1 million GNO (18 decimals)
 
     // Deterministic salts for CREATE2
-    bytes32 constant WETH_SALT = keccak256("token-weth");
     bytes32 constant USDC_SALT = keccak256("token-usdc");
     bytes32 constant DAI_SALT = keccak256("token-dai");
     bytes32 constant USDT_SALT = keccak256("token-usdt");
@@ -37,17 +34,12 @@ contract DeployTokens is Script {
         console.log("Chain ID:", block.chainid);
         console.log("");
 
-        // WETH is already deployed at mainnet address via cast rpc anvil_setCode
-        console.log("Using WETH at mainnet address...");
+        // WETH will be deployed separately as TestERC20 via TypeScript
+        console.log("WETH will be deployed at mainnet address by TypeScript...");
         address wethAddress = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-        WETH weth = WETH(payable(wethAddress));
         console.log("  WETH address:", wethAddress);
 
         vm.startBroadcast(deployerPrivateKey);
-
-        // Wrap some ETH to WETH for deployer
-        weth.deposit{value: WETH_SUPPLY}();
-        console.log("  Wrapped", WETH_SUPPLY / 1e18, "ETH to WETH");
 
         // Deploy USDC (6 decimals) with CREATE2
         console.log("");
