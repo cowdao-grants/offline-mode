@@ -32,6 +32,7 @@ services:
   chain:
     image: ghcr.io/foundry-rs/foundry:latest
     restart: always
+    
     entrypoint: /bin/sh
     command:
       - -c
