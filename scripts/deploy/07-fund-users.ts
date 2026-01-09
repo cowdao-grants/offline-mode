@@ -6,6 +6,7 @@ import { execSync } from 'child_process';
 import { DeploymentConfig, TokenAddresses } from './types';
 import { printSection } from './utils';
 import { getUsers } from './balances-config';
+import { logger, indent } from './logger';
 
 export async function fundUsers(
   config: DeploymentConfig,
@@ -17,57 +18,53 @@ export async function fundUsers(
   const userEntries = Object.entries(users);
 
   if (userEntries.length === 0) {
-    console.log('No users configured for funding. Skipping...');
-    console.log('');
+    logger.info('No users configured for funding. Skipping');
     return;
   }
 
-  console.log(`Found ${userEntries.length} user(s) to fund:`);
+  logger.debug(`Found ${userEntries.length} user(s) to fund:`);
   userEntries.forEach(([username, userConfig]) => {
-    console.log(`  - ${username}: ${userConfig.address}`);
+    logger.debug(indent(`- ${username}: ${userConfig.address}`));
   });
-  console.log('');
 
   // Process each user
   for (const [username, userConfig] of userEntries) {
-    console.log(`Funding ${username} (${userConfig.address})...`);
+    logger.debug(`Funding ${username} (${userConfig.address})`);
 
     // Transfer each token to the user
     for (const [tokenSymbol, amount] of Object.entries(userConfig.tokens)) {
       const tokenAddress = tokens[tokenSymbol as keyof TokenAddresses];
 
       if (!tokenAddress) {
-        console.log(`  ⚠️  Token ${tokenSymbol} not found in deployed tokens, skipping...`);
+        logger.warn(indent(`Token ${tokenSymbol} not found in deployed tokens, skipping`));
         continue;
       }
 
       try {
         // For WETH, we need to use transfer (not mint)
         // For other tokens, we use transfer from deployer
-        console.log(`  Transferring ${tokenSymbol}...`);
+        logger.trace(indent(`Transferring ${tokenSymbol}`, 2));
 
         execSync(
           `cast send ${tokenAddress} "transfer(address,uint256)" ${userConfig.address} ${amount} --private-key ${config.deployerPrivateKey} --rpc-url ${config.rpcUrl}`,
           { stdio: 'inherit' }
         );
 
-        console.log(`    ✅ ${tokenSymbol} transferred`);
+        logger.trace(indent(`${tokenSymbol} transferred`, 3));
       } catch (error) {
-        console.error(`    ❌ Failed to transfer ${tokenSymbol}:`, error);
+        logger.error({ error }, `Failed to transfer ${tokenSymbol}`);
       }
     }
 
-    console.log(`  ✅ ${username} funded successfully`);
-    console.log('');
+    logger.debug(indent(`${username} funded successfully`));
   }
 
-  console.log('✅ All users funded with initial token balances!');
-  console.log('');
+  logger.info('All users funded with initial token balances');
 }
 
 // If run directly
 if (require.main === module) {
-  console.error('❌ This script should be run via the main deploy-all.ts script');
-  console.error('   Or run it manually after deployment with proper token addresses');
+  logger.error('This script should be run via the main deploy-all.ts script');
+  logger.error('Or run it manually after deployment with proper token addresses');
   process.exit(1);
 }

@@ -8,6 +8,7 @@ import * as path from 'path';
 import { DeploymentConfig, TokenAddresses, UniswapAddresses, CowProtocolAddresses } from './types';
 import { runForgeScript, printSection } from './utils';
 import { loadBalancesConfig } from './balances-config';
+import { logger, indent } from './logger';
 
 const execAsync = promisify(exec);
 
@@ -58,9 +59,7 @@ export async function addLiquidity(
     }
   );
 
-  console.log('');
-  console.log('✅ Liquidity added to all pairs!');
-  console.log('');
+  logger.info('Liquidity added to all pairs successfully');
 }
 
 export async function initializeRouter(
@@ -73,10 +72,9 @@ export async function initializeRouter(
 
   // Use cast with anvil_impersonateAccount to set approvals
   // This creates real transactions that persist in Anvil state
-  console.log('Setting approvals from Settlement to Router...');
-  console.log(`Settlement: ${cowProtocol.settlement}`);
-  console.log(`Router: ${uniswap.router}`);
-  console.log('');
+  logger.debug('Setting approvals from Settlement to Router');
+  logger.debug(indent(`Settlement: ${cowProtocol.settlement}`));
+  logger.debug(indent(`Router: ${uniswap.router}`));
 
   const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
 
@@ -89,13 +87,12 @@ export async function initializeRouter(
   ];
 
   // First, fund the Settlement contract with ETH for gas
-  console.log('Funding Settlement contract with ETH for gas...');
-  const { stdout: fundOutput } = await execAsync(
+  logger.debug('Funding Settlement contract with ETH for gas');
+  await execAsync(
     `cast send ${cowProtocol.settlement} --value 10ether --private-key ${config.deployerPrivateKey} --rpc-url ${config.rpcUrl}`,
     { cwd: path.join(__dirname, '../..') }
   );
-  console.log('  ✅ Settlement funded with 10 ETH');
-  console.log('');
+  logger.trace(indent('Settlement funded with 10 ETH'));
 
   // Enable impersonation
   await execAsync(
@@ -105,15 +102,15 @@ export async function initializeRouter(
 
   // Approve each token
   for (const token of tokenList) {
-    console.log(`Approving ${token.name}...`);
+    logger.debug(indent(`Approving ${token.name}`));
     try {
-      const { stdout: approveOutput } = await execAsync(
+      await execAsync(
         `cast send ${token.address} "approve(address,uint256)" ${uniswap.router} ${MAX_UINT256} --from ${cowProtocol.settlement} --rpc-url ${config.rpcUrl} --unlocked --gas-limit 100000`,
         { cwd: path.join(__dirname, '../..') }
       );
-      console.log(`  ✅ ${token.name} approved`);
+      logger.debug(indent(`${token.name} approved`, 2));
     } catch (error) {
-      console.error(`  ❌ Failed to approve ${token.name}:`, error);
+      logger.error({ error }, `Failed to approve ${token.name}`);
       throw error;
     }
   }
@@ -124,13 +121,11 @@ export async function initializeRouter(
     { cwd: path.join(__dirname, '../..') }
   );
 
-  console.log('');
-  console.log('✅ Router initialized with all token approvals!');
-  console.log('');
+  logger.info('Router initialized with all token approvals successfully');
 }
 
 // If run directly
 if (require.main === module) {
-  console.error('❌ This script should be run via the main deploy-all.ts script');
+  logger.error('This script should be run via the main deploy-all.ts script');
   process.exit(1);
 }
