@@ -4,13 +4,17 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
+// Anvil's deterministic default test account private keys
+// These are publicly known keys used for local development only
+const ANVIL_ACCOUNT_0_PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
+const ANVIL_ACCOUNT_1_PRIVATE_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
+
 // Configuration
 export const CONFIG = {
   rpcUrl: process.env.NODE_URL || 'http://localhost:8545',
   chainId: parseInt(process.env.CHAIN_ID || '1'),
-  // Anvil default private keys
-  account0PrivateKey: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
-  account1PrivateKey: '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d',
+  account0PrivateKey: ANVIL_ACCOUNT_0_PRIVATE_KEY,
+  account1PrivateKey: ANVIL_ACCOUNT_1_PRIVATE_KEY,
 };
 
 // Contract addresses from environment
