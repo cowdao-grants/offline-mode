@@ -27,11 +27,11 @@ contract MockChainlinkOracle {
 
     /**
      * @notice Get the latest round data
-     * @dev Returns mock data with configurable price
+     * @dev Returns mock data with configurable price and current block timestamp
      * @return roundId The round ID (always 1 for mock)
      * @return answer The price (in decimals specified)
-     * @return startedAt The timestamp when round started
-     * @return updatedAt The timestamp when round was updated
+     * @return startedAt The timestamp when round started (current block timestamp)
+     * @return updatedAt The timestamp when round was updated (current block timestamp)
      * @return answeredInRound The round ID (always 1 for mock)
      */
     function latestRoundData()
@@ -45,7 +45,7 @@ contract MockChainlinkOracle {
             uint80 answeredInRound
         )
     {
-        return (1, _price, _updatedAt, _updatedAt, 1);
+        return (1, _price, block.timestamp, block.timestamp, 1);
     }
 
     /**
