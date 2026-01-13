@@ -72,17 +72,18 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
   const mainnetVaultRelayer = '0xC92E8bdf79f0507f65a392b0ab4667716BFE0110';
 
   // Get mainnet RPC URL from environment
-  const mainnetRpcUrl = process.env.MAINNET_RPC_URL || 'https://eth.llamarpc.com';
+  // Note: Use https://eth.drpc.org because llamarpc doesn't return full tx input data
+  const mainnetRpcUrl = process.env.MAINNET_RPC_URL || 'https://eth.drpc.org';
   logger.debug(`Using mainnet RPC: ${mainnetRpcUrl}`);
 
-  logger.debug('Fetching CoW Protocol contract bytecode from mainnet');
+  // CoW Protocol contracts were deployed on mainnet using CREATE2 via Singleton Factory
+  const SINGLETON_FACTORY = '0x4e59b44847b379578588920cA78FbF26c0B4956C';
+  const SALT = '0x4d61747472657373657320696e204265726c696e2100000000000000000000'; // "Mattresses in Berlin!"
 
-  // Authenticator is a proxy - we need both proxy and implementation
-  logger.trace(indent('Fetching Authenticator proxy bytecode'));
-  const authBytecode = execSync(`cast code ${mainnetAuthenticator} --rpc-url ${mainnetRpcUrl}`, {
-    encoding: 'utf8',
-  }).trim();
-  logger.trace(indent(`Authenticator proxy bytecode length: ${authBytecode.length} chars`, 2));
+  logger.debug('Deploying CoW Protocol via CREATE2 using Singleton Factory');
+
+  // Step 1: Deploy Authenticator implementation (required by proxy constructor)
+  logger.debug('Step 1: Deploying Authenticator implementation');
 
   // Get implementation address from EIP-1967 storage slot
   const implSlot = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
@@ -91,90 +92,96 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
     { encoding: 'utf8' }
   ).trim();
   const mainnetAuthImpl = '0x' + implAddressRaw.slice(-40);
-  logger.trace(indent(`Authenticator implementation address: ${mainnetAuthImpl}`));
+  logger.trace(indent(`Implementation address: ${mainnetAuthImpl}`));
 
-  logger.trace(indent('Fetching Authenticator implementation bytecode'));
+  // Fetch and deploy implementation bytecode (not via CREATE2, just copy)
+  logger.trace(indent('Fetching implementation bytecode from mainnet'));
   const authImplBytecode = execSync(`cast code ${mainnetAuthImpl} --rpc-url ${mainnetRpcUrl}`, {
     encoding: 'utf8',
   }).trim();
-  logger.trace(indent(`Authenticator implementation bytecode length: ${authImplBytecode.length} chars`, 2));
 
-  logger.trace(indent('Fetching Settlement bytecode'));
-  const settlementBytecode = execSync(`cast code ${mainnetSettlement} --rpc-url ${mainnetRpcUrl}`, {
-    encoding: 'utf8',
-  }).trim();
-  logger.trace(indent(`Settlement bytecode length: ${settlementBytecode.length} chars`, 2));
-
-  logger.trace(indent('Fetching VaultRelayer bytecode'));
-  const vaultRelayerBytecode = execSync(`cast code ${mainnetVaultRelayer} --rpc-url ${mainnetRpcUrl}`, {
-    encoding: 'utf8',
-  }).trim();
-  logger.trace(indent(`VaultRelayer bytecode length: ${vaultRelayerBytecode.length} chars`, 2));
-
-  logger.debug('Fetching storage state from mainnet');
-
-  // Fetch Authenticator storage (slot 0 contains manager address)
-  logger.trace(indent('Fetching Authenticator storage'));
-  const authStorage0 = execSync(
-    `cast storage ${mainnetAuthenticator} 0 --rpc-url ${mainnetRpcUrl}`,
-    { encoding: 'utf8' }
-  ).trim();
-  logger.trace(indent(`Slot 0: ${authStorage0}`, 2));
-
-  // Fetch Settlement storage (slot 1 contains initialization flag)
-  logger.trace(indent('Fetching Settlement storage'));
-  const settlementStorage1 = execSync(
-    `cast storage ${mainnetSettlement} 1 --rpc-url ${mainnetRpcUrl}`,
-    { encoding: 'utf8' }
-  ).trim();
-  logger.trace(indent(`Slot 1: ${settlementStorage1}`, 2));
-
-  logger.debug('Setting CoW Protocol contracts at mainnet addresses');
-
-  // First, deploy the Authenticator implementation contract
-  logger.trace(indent(`Setting Authenticator implementation at ${mainnetAuthImpl}`));
   execSync(
     `cast rpc anvil_setCode ${mainnetAuthImpl} ${authImplBytecode} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
+  logger.info(indent(`Implementation deployed at: ${mainnetAuthImpl}`));
 
-  // Set Authenticator proxy bytecode and storage
-  logger.trace(indent(`Setting Authenticator proxy at ${mainnetAuthenticator}`));
-  execSync(
-    `cast rpc anvil_setCode ${mainnetAuthenticator} ${authBytecode} --rpc-url ${config.rpcUrl}`,
-    { stdio: 'inherit' }
-  );
-  logger.trace(indent('Setting Authenticator proxy storage'));
-  // Set slot 0 (manager address)
-  execSync(
-    `cast rpc anvil_setStorageAt ${mainnetAuthenticator} 0x0 ${authStorage0} --rpc-url ${config.rpcUrl}`,
-    { stdio: 'inherit' }
-  );
-  // Set EIP-1967 implementation slot
-  const implSlotPadded = '0x' + '0'.repeat(24) + mainnetAuthImpl.slice(2).toLowerCase();
-  execSync(
-    `cast rpc anvil_setStorageAt ${mainnetAuthenticator} ${implSlot} ${implSlotPadded} --rpc-url ${config.rpcUrl}`,
-    { stdio: 'inherit' }
-  );
+  // Step 2: Deploy Authenticator proxy via CREATE2
+  logger.debug('Step 2: Deploying Authenticator proxy via CREATE2');
 
-  // Set Settlement bytecode and storage
-  logger.trace(indent(`Setting Settlement at ${mainnetSettlement}`));
+  const authTxHash = '0xb84bf720364f94c749f1ec1cdf0d4c44c70411b716459aaccfd24fc677013375';
+  logger.trace(indent('Fetching Authenticator deployment transaction from mainnet'));
+  const authTxInput = execSync(
+    `cast tx ${authTxHash} --rpc-url ${mainnetRpcUrl} input`,
+    { encoding: 'utf8' }
+  ).trim();
+
+  // Deploy via Singleton Factory: send tx input directly (salt + initCode)
+  logger.trace(indent('Deploying Authenticator via CREATE2'));
   execSync(
-    `cast rpc anvil_setCode ${mainnetSettlement} ${settlementBytecode} --rpc-url ${config.rpcUrl}`,
-    { stdio: 'inherit' }
-  );
-  logger.trace(indent('Setting Settlement storage'));
-  execSync(
-    `cast rpc anvil_setStorageAt ${mainnetSettlement} 0x1 ${settlementStorage1} --rpc-url ${config.rpcUrl}`,
+    `cast send ${SINGLETON_FACTORY} ${authTxInput.slice(2)} --private-key ${config.deployerPrivateKey} --rpc-url ${config.rpcUrl} --gas-limit 10000000`,
     { stdio: 'inherit' }
   );
 
-  // Set VaultRelayer bytecode (no storage needed - stateless)
-  logger.trace(indent(`Setting VaultRelayer at ${mainnetVaultRelayer}`));
+  // Verify Authenticator deployment
+  const authCode = execSync(
+    `cast code ${mainnetAuthenticator} --rpc-url ${config.rpcUrl}`,
+    { encoding: 'utf8' }
+  ).trim();
+
+  if (!authCode || authCode === '0x') {
+    throw new Error('Failed to deploy Authenticator via CREATE2');
+  }
+  logger.info(indent(`Authenticator deployed at: ${mainnetAuthenticator}`));
+
+  // Set implementation address in proxy's EIP-1967 storage slot
+  logger.trace(indent('Setting implementation address in proxy storage'));
+  const implAddressPadded = '0x' + '0'.repeat(24) + mainnetAuthImpl.slice(2);
   execSync(
-    `cast rpc anvil_setCode ${mainnetVaultRelayer} ${vaultRelayerBytecode} --rpc-url ${config.rpcUrl}`,
+    `cast rpc anvil_setStorageAt ${mainnetAuthenticator} ${implSlot} ${implAddressPadded} --rpc-url ${config.rpcUrl}`,
     { stdio: 'inherit' }
   );
+  logger.trace(indent(`Implementation address set to: ${mainnetAuthImpl}`));
+
+  // Step 3: Deploy Settlement via CREATE2 (which will deploy VaultRelayer in its constructor)
+  logger.debug('Step 3: Deploying Settlement via CREATE2');
+
+  const settlementTxHash = '0xf49f90aa5a268c40001d1227b76bb4dd8247f18361fcad9fffd4a7a44f1320d3';
+  logger.trace(indent('Fetching Settlement deployment transaction from mainnet'));
+  const settlementTxInput = execSync(
+    `cast tx ${settlementTxHash} --rpc-url ${mainnetRpcUrl} input`,
+    { encoding: 'utf8' }
+  ).trim();
+
+  // Deploy via Singleton Factory
+  logger.trace(indent('Deploying Settlement via CREATE2'));
+  logger.trace(indent('(VaultRelayer will be created in Settlement constructor)', 2));
+  execSync(
+    `cast send ${SINGLETON_FACTORY} ${settlementTxInput.slice(2)} --private-key ${config.deployerPrivateKey} --rpc-url ${config.rpcUrl} --gas-limit 30000000`,
+    { stdio: 'inherit' }
+  );
+
+  // Verify Settlement deployment
+  const settlementCode = execSync(
+    `cast code ${mainnetSettlement} --rpc-url ${config.rpcUrl}`,
+    { encoding: 'utf8' }
+  ).trim();
+
+  if (!settlementCode || settlementCode === '0x') {
+    throw new Error('Failed to deploy Settlement via CREATE2');
+  }
+  logger.info(indent(`Settlement deployed at: ${mainnetSettlement}`));
+
+  // Verify VaultRelayer deployment (created by Settlement constructor)
+  const vaultRelayerCode = execSync(
+    `cast code ${mainnetVaultRelayer} --rpc-url ${config.rpcUrl}`,
+    { encoding: 'utf8' }
+  ).trim();
+
+  if (!vaultRelayerCode || vaultRelayerCode === '0x') {
+    throw new Error('VaultRelayer was not deployed by Settlement constructor');
+  }
+  logger.info(indent(`VaultRelayer deployed at: ${mainnetVaultRelayer}`));
 
   const authenticator = mainnetAuthenticator;
   const settlement = mainnetSettlement;
