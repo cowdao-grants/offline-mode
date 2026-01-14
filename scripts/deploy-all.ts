@@ -14,6 +14,7 @@ import {
   printNextSteps,
 } from './deploy/utils';
 import { logger } from './deploy/logger';
+import { deploySingletonFactory } from './deploy/00-deploy-singleton-factory';
 import { deployMulticall3 } from './deploy/01-deploy-multicall3';
 import { deployTokens } from './deploy/02-deploy-tokens';
 import { deployUniswap } from './deploy/03-deploy-uniswap';
@@ -54,6 +55,9 @@ async function main() {
   fs.mkdirSync(stateDir, { recursive: true });
 
   try {
+    // Step 0: Deploy Singleton Factory (Deterministic Deployer)
+    await deploySingletonFactory(config);
+
     // Step 1: Deploy Multicall3
     await deployMulticall3(config);
 

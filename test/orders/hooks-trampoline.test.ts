@@ -94,6 +94,19 @@ describe("Hooks Trampoline Orders", () => {
     allAddresses = loadAddresses();
   });
 
+  beforeEach(async () => {
+    // Reset wallet connection to force nonce refresh between tests
+    // This prevents "nonce has already been used" errors when running tests sequentially
+    const privateKey = userWallet.privateKey;
+    userWallet = new ethers.Wallet(privateKey, provider);
+
+    const recipientKey = hookRecipient.privateKey;
+    hookRecipient = new ethers.Wallet(recipientKey, provider);
+
+    // Add a small delay to ensure previous transactions are fully processed
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  });
+
   describe("Pre-Hook Execution", () => {
     it("should execute a pre-hook that transfers tokens before settlement", async () => {
       const sellToken = "DAI";
