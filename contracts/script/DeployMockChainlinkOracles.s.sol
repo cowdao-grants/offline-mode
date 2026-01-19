@@ -32,28 +32,28 @@ contract DeployMockChainlinkOracles is Script {
     function run() external {
         vm.startBroadcast();
 
-        // Deploy WETH/USD oracle
-        MockChainlinkOracle wethOracle = new MockChainlinkOracle(DECIMALS, WETH_PRICE);
+        // Deploy WETH/USD oracle with deterministic address using CREATE2
+        MockChainlinkOracle wethOracle = new MockChainlinkOracle{salt: bytes32("WETH_USD_ORACLE")}(DECIMALS, WETH_PRICE);
         console.log("WETH/USD Oracle deployed at:", address(wethOracle));
         console.log("  Initial price: $3000");
 
-        // Deploy DAI/USD oracle
-        MockChainlinkOracle daiOracle = new MockChainlinkOracle(DECIMALS, DAI_PRICE);
+        // Deploy DAI/USD oracle with deterministic address using CREATE2
+        MockChainlinkOracle daiOracle = new MockChainlinkOracle{salt: bytes32("DAI_USD_ORACLE")}(DECIMALS, DAI_PRICE);
         console.log("DAI/USD Oracle deployed at:", address(daiOracle));
         console.log("  Initial price: $1");
 
-        // Deploy USDC/USD oracle
-        MockChainlinkOracle usdcOracle = new MockChainlinkOracle(DECIMALS, USDC_PRICE);
+        // Deploy USDC/USD oracle with deterministic address using CREATE2
+        MockChainlinkOracle usdcOracle = new MockChainlinkOracle{salt: bytes32("USDC_USD_ORACLE")}(DECIMALS, USDC_PRICE);
         console.log("USDC/USD Oracle deployed at:", address(usdcOracle));
         console.log("  Initial price: $1");
 
-        // Deploy USDT/USD oracle
-        MockChainlinkOracle usdtOracle = new MockChainlinkOracle(DECIMALS, USDT_PRICE);
+        // Deploy USDT/USD oracle with deterministic address using CREATE2
+        MockChainlinkOracle usdtOracle = new MockChainlinkOracle{salt: bytes32("USDT_USD_ORACLE")}(DECIMALS, USDT_PRICE);
         console.log("USDT/USD Oracle deployed at:", address(usdtOracle));
         console.log("  Initial price: $1");
 
-        // Deploy GNO/USD oracle
-        MockChainlinkOracle gnoOracle = new MockChainlinkOracle(DECIMALS, GNO_PRICE);
+        // Deploy GNO/USD oracle with deterministic address using CREATE2
+        MockChainlinkOracle gnoOracle = new MockChainlinkOracle{salt: bytes32("GNO_USD_ORACLE")}(DECIMALS, GNO_PRICE);
         console.log("GNO/USD Oracle deployed at:", address(gnoOracle));
         console.log("  Initial price: $100");
 

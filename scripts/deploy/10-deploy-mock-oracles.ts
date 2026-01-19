@@ -38,12 +38,13 @@ export async function deployMockOracles(
 
   const broadcast = readBroadcastResult('DeployMockChainlinkOracles');
 
-  // Extract oracle addresses (5 CREATE transactions in order)
-  const wethUsdOracle = extractAddress(broadcast, undefined, 'CREATE', 0);
-  const daiUsdOracle = extractAddress(broadcast, undefined, 'CREATE', 1);
-  const usdcUsdOracle = extractAddress(broadcast, undefined, 'CREATE', 2);
-  const usdtUsdOracle = extractAddress(broadcast, undefined, 'CREATE', 3);
-  const gnoUsdOracle = extractAddress(broadcast, undefined, 'CREATE', 4);
+  // Extract oracle addresses (5 CREATE2 transactions in order)
+  // These addresses are deterministic thanks to CREATE2 with fixed salts
+  const wethUsdOracle = extractAddress(broadcast, undefined, 'CREATE2', 0);
+  const daiUsdOracle = extractAddress(broadcast, undefined, 'CREATE2', 1);
+  const usdcUsdOracle = extractAddress(broadcast, undefined, 'CREATE2', 2);
+  const usdtUsdOracle = extractAddress(broadcast, undefined, 'CREATE2', 3);
+  const gnoUsdOracle = extractAddress(broadcast, undefined, 'CREATE2', 4);
 
   logger.info('Mock Chainlink oracles deployed successfully');
   logger.info('Deployed oracle addresses:');

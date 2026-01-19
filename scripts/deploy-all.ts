@@ -89,60 +89,20 @@ async function main() {
     const safe = await deploySafe(config);
 
     // Step 11: Deploy Mock Chainlink Oracles
+    // Note: Oracles are deployed with CREATE2 at deterministic addresses
+    // These addresses are hardcoded in .env and should match the deployed addresses
     const mockOracles = await deployMockOracles(config);
 
-    // Step 12: Save oracle addresses to .env file
-    printSection('STEP 12: Saving Oracle Addresses to .env');
-    const envPath = path.join(__dirname, '../.env');
-
-    // Read current .env file
-    let envContent = '';
-    if (fs.existsSync(envPath)) {
-      envContent = fs.readFileSync(envPath, 'utf8');
-    }
-
-    // Remove old oracle address lines if they exist
-    const oracleKeys = [
-      'WETH_USD_ORACLE_ADDRESS',
-      'DAI_USD_ORACLE_ADDRESS',
-      'USDC_USD_ORACLE_ADDRESS',
-      'USDT_USD_ORACLE_ADDRESS',
-      'GNO_USD_ORACLE_ADDRESS',
-    ];
-
-    const envLines = envContent.split('\n').filter(line => {
-      const key = line.split('=')[0].trim();
-      return !oracleKeys.includes(key);
-    });
-
-    // Append new oracle addresses
-    envLines.push('');
-    envLines.push('# =============================================================================');
-    envLines.push('# Mock Chainlink Oracles (Deployed)');
-    envLines.push('# =============================================================================');
-    envLines.push(`WETH_USD_ORACLE_ADDRESS=${mockOracles.wethUsdOracle}`);
-    envLines.push(`DAI_USD_ORACLE_ADDRESS=${mockOracles.daiUsdOracle}`);
-    envLines.push(`USDC_USD_ORACLE_ADDRESS=${mockOracles.usdcUsdOracle}`);
-    envLines.push(`USDT_USD_ORACLE_ADDRESS=${mockOracles.usdtUsdOracle}`);
-    envLines.push(`GNO_USD_ORACLE_ADDRESS=${mockOracles.gnoUsdOracle}`);
-
-    // Write back to .env
-    fs.writeFileSync(envPath, envLines.join('\n'));
-
-    logger.info('Oracle addresses saved to .env');
-
-    // Also save Safe address to .env
-    if (!envContent.includes('TEST_USER_SAFE_ADDRESS')) {
-      const safeEnvLines = [
-        '',
-        '# =============================================================================',
-        '# Test Safe Wallet',
-        '# =============================================================================',
-        `TEST_USER_SAFE_ADDRESS=${safe.testUserSafe}`,
-      ];
-      fs.appendFileSync(envPath, safeEnvLines.join('\n'));
-      logger.info('Test Safe address saved to .env');
-    }
+    logger.info('');
+    logger.info('Deployed oracle addresses (deterministic via CREATE2):');
+    logger.info(`  WETH_USD_ORACLE_ADDRESS=${mockOracles.wethUsdOracle}`);
+    logger.info(`  DAI_USD_ORACLE_ADDRESS=${mockOracles.daiUsdOracle}`);
+    logger.info(`  USDC_USD_ORACLE_ADDRESS=${mockOracles.usdcUsdOracle}`);
+    logger.info(`  USDT_USD_ORACLE_ADDRESS=${mockOracles.usdtUsdOracle}`);
+    logger.info(`  GNO_USD_ORACLE_ADDRESS=${mockOracles.gnoUsdOracle}`);
+    logger.info(`  TEST_USER_SAFE_ADDRESS=${safe.testUserSafe}`);
+    logger.info('');
+    logger.info('ℹ️  These addresses are deterministic and should be added to .env.example');
 
     // Print summary
     printSection('DEPLOYMENT COMPLETE');
