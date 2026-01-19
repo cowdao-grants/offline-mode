@@ -31,6 +31,8 @@ import {
   approveToken,
 } from "../utils/order-helpers";
 import { loadAddresses } from "../utils/loadAddresses";
+import path from "path";
+import fs from "fs";
 
 // ERC20 ABI
 const ERC20_ABI = [
@@ -161,11 +163,8 @@ describe("CoWShed Safe Trading", () => {
     addresses = getAddresses();
     allAddresses = loadAddresses();
 
-    // Use the deployed test Safe
-    const envContent = require("fs").readFileSync(
-      "/Users/lgahdl/Documents/Trabalho/offline-mode/.env",
-      "utf8"
-    );
+    const envPath = path.resolve(__dirname, "../../.env");
+    const envContent = fs.readFileSync(envPath, "utf8");
     const testUserSafeMatch = envContent.match(
       /TEST_USER_SAFE_ADDRESS=(.+)/
     );
