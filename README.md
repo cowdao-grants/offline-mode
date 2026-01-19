@@ -42,6 +42,27 @@ All services work out-of-the-box with proper configuration pointing to the local
 
 - Docker and Docker Compose
 - Git
+- Node.js 18+ and npm
+- **Foundry** (required for running tests)
+
+#### Installing Foundry
+
+Foundry is required to run the test suite (`npm test`). Install it using foundryup:
+
+```bash
+# Install foundryup
+curl -L https://foundry.paradigm.xyz | bash
+
+# Install Foundry (forge, cast, anvil, chisel)
+foundryup
+```
+
+Verify installation:
+```bash
+cast --version
+```
+
+For more details, see [Foundry Book](https://book.getfoundry.sh/getting-started/installation)
 
 ### Setup
 
@@ -96,6 +117,9 @@ All services work out-of-the-box with proper configuration pointing to the local
    ```
 
 3. **Run tests**:
+
+   ⚠️ **IMPORTANT**: Make sure you have [Foundry installed](#installing-foundry) before running tests. The test suite uses `cast` to interact with the blockchain.
+
    ```bash
    npm test
    ```
@@ -119,7 +143,10 @@ The playground includes comprehensive Jest integration tests for CoW Protocol or
 
 #### Running Tests
 
-**⚠️ IMPORTANT:** You must have the Docker Compose services running before running tests!
+**⚠️ IMPORTANT:**
+- You must have the Docker Compose services running before running tests!
+- **Foundry must be installed** on your system (see [Installing Foundry](#installing-foundry))
+- The test suite uses `cast` to refresh oracle timestamps before running
 
 ```bash
 # Start services
@@ -1036,6 +1063,24 @@ Services: `chain`, `chain-deployer`, `orderbook`, `autopilot`, `driver`, `baseli
 4. **Verify token approvals** are set for VaultRelayer
 
 5. **Check liquidity**: Ensure Uniswap pools have sufficient liquidity for the trading pair
+
+### Tests Failing on Oracle Refresh
+
+If tests fail immediately with "Failed to refresh oracle timestamps":
+
+**Cause:** Foundry (`cast`) is not installed or not in PATH.
+
+**Solution:**
+1. Install Foundry (see [Installing Foundry](#installing-foundry))
+2. Verify `cast` is in your PATH:
+   ```bash
+   cast --version
+   ```
+3. If installed but not in PATH, restart your terminal or add to PATH:
+   ```bash
+   # Add to ~/.bashrc or ~/.zshrc
+   export PATH="$HOME/.foundry/bin:$PATH"
+   ```
 
 ### Tests Timeout
 
