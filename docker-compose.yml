@@ -192,8 +192,7 @@ services:
           sleep 1
         done
         echo "Chain is ready! Building and starting autopilot..."
-        cargo build --bin autopilot
-        target/aarch64-unknown-linux-gnu/debug/autopilot
+        cargo run --bin autopilot
     env_file:
       - .env
       - .env.services
@@ -253,8 +252,7 @@ services:
           sleep 1
         done
         echo "Chain is ready! Building and starting driver..."
-        cargo build --bin driver
-        target/aarch64-unknown-linux-gnu/debug/driver --config /workspace/configs/offline/driver.toml
+        cargo run --bin driver -- --config /workspace/configs/offline/driver.toml
     env_file:
       - .env
       - .env.services
@@ -290,8 +288,7 @@ services:
           sleep 1
         done
         echo "Chain is ready! Building and starting baseline solver..."
-        cargo build --bin solvers
-        target/aarch64-unknown-linux-gnu/debug/solvers baseline --config /workspace/configs/offline/baseline.toml
+        cargo run --bin solvers -- baseline --config /workspace/configs/offline/baseline.toml
     env_file:
       - .env
       - .env.services
