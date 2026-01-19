@@ -73,7 +73,7 @@ export async function deployCowProtocol(config: DeploymentConfig): Promise<CowPr
 
   // Get mainnet RPC URL from environment
   // Note: Use https://eth.drpc.org because llamarpc doesn't return full tx input data
-  const mainnetRpcUrl = process.env.MAINNET_RPC_URL || 'https://eth.drpc.org';
+  const mainnetRpcUrl = process.env.MAINNET_RPC_URL || 'https://eth.llamarpc.com';
   logger.debug(`Using mainnet RPC: ${mainnetRpcUrl}`);
 
   // CoW Protocol contracts were deployed on mainnet using CREATE2 via Singleton Factory

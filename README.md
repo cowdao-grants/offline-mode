@@ -41,6 +41,34 @@ All services work out-of-the-box with proper configuration pointing to the local
 ### Prerequisites
 
 - Docker and Docker Compose
+- Git
+
+### Setup
+
+1. **Clone the repository with submodules**:
+   ```bash
+   git clone --recurse-submodules https://github.com/cowdao-grants/offline-mode.git
+   cd offline-mode
+   ```
+
+   If you already cloned without submodules, initialize them:
+   ```bash
+   git submodule init
+   git submodule update
+   ```
+
+2. **Configure Mainnet RPC URL**:
+
+   ⚠️ **IMPORTANT**: The deployment process fetches contract bytecode from Ethereum mainnet. You **must** configure a valid Alchemy RPC URL in the `.env` file:
+
+   ```bash
+   # Open .env and update this line with your Alchemy API key:
+   MAINNET_RPC_URL=https://eth-mainnet.g.alchemy.com/v2/YOUR_ALCHEMY_API_KEY
+   ```
+
+   Get a free Alchemy API key at [https://www.alchemy.com/](https://www.alchemy.com/)
+
+   **Why this is needed:** During deployment, the chain-deployer fetches bytecode for contracts like Balances Helper, Signatures, and other auxiliary contracts from mainnet to deploy them at their deterministic addresses locally.
 
 ### Initialize the Environment
 

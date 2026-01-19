@@ -1,7 +1,7 @@
 services:
   # Chain Deployer - Prepares blockchain state if not exists
   chain-deployer:
-    image: ghcr.io/foundry-rs/foundry:latest
+    image: ghcr.io/foundry-rs/foundry:nightly-1c57854462289b2e71ee7654cd6666217ed86ffd
     user: root
     entrypoint: /bin/bash
     command:
@@ -30,9 +30,8 @@ services:
 
   # Anvil node with pre-deployed contracts (offline mode)
   chain:
-    image: ghcr.io/foundry-rs/foundry:latest
+    image: ghcr.io/foundry-rs/foundry:nightly-1c57854462289b2e71ee7654cd6666217ed86ffd
     restart: always
-    
     entrypoint: /bin/sh
     command:
       - -c
@@ -111,7 +110,7 @@ services:
     build:
       context: ./modules/services
       target: migrations
-      dockerfile: ./playground/Dockerfile
+      dockerfile: ../../Dockerfile
     restart: on-failure
     env_file: .env
     environment:
@@ -123,7 +122,7 @@ services:
     build:
       context: ./modules/services
       target: localdev
-      dockerfile: ./playground/Dockerfile
+      dockerfile: ../../Dockerfile
     restart: always
     command: ["cargo", "watch", "-x", "run --bin orderbook"]
     environment:
@@ -183,7 +182,7 @@ services:
     build:
       context: ./modules/services
       target: localdev
-      dockerfile: ./playground/Dockerfile
+      dockerfile: ../../Dockerfile
     restart: always
     entrypoint: ["/bin/bash", "-c"]
     command:
@@ -244,7 +243,7 @@ services:
     build:
       context: ./modules/services
       target: localdev
-      dockerfile: ./playground/Dockerfile
+      dockerfile: ../../Dockerfile
     restart: always
     entrypoint: ["/bin/bash", "-c"]
     command:
@@ -281,7 +280,7 @@ services:
     build:
       context: ./modules/services
       target: localdev
-      dockerfile: ./playground/Dockerfile
+      dockerfile: ../../Dockerfile
     restart: always
     entrypoint: ["/bin/bash", "-c"]
     command:
@@ -317,12 +316,12 @@ services:
       dockerfile: Dockerfile.cowswap
       args:
         - CHAIN=31337
-        - ETH_RPC_URL=http://127.0.0.1:8545
+        - ETH_RPC_URL=http://chain:8545
     env_file: .env
     environment:
       - REACT_APP_NETWORK_ID=31337
       - REACT_APP_NETWORK_NAME=Anvil Offline
-      - REACT_APP_NETWORK_URL_PRODUCTION=http://127.0.0.1:8545
+      - REACT_APP_NETWORK_URL_PRODUCTION=http://chain:8545
       - REACT_APP_API_URL=http://127.0.0.1:8080
     ports:
       - 8000:80
