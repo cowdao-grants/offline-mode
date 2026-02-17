@@ -7,3 +7,6 @@
 [submodule "modules/watch-tower"]
 	path = modules/watch-tower
 	url = https://github.com/cowprotocol/watch-tower.git
+[submodule "modules/frontend"]
+	path = modules/frontend
+	url = https://github.com/cowprotocol/cowswap.git
