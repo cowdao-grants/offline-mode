@@ -25,6 +25,7 @@ import {
   approveToken,
 } from "../utils/order-helpers";
 import { loadAddresses } from "../utils/loadAddresses";
+import { syncContainerTime } from "../utils/anvil-helpers";
 
 // ERC20 ABI for encoding hook calls
 const ERC20_ABI = [
@@ -76,7 +77,7 @@ describe("Hooks Trampoline Orders", () => {
   let allAddresses: ReturnType<typeof loadAddresses>;
   let hookRecipient: ethers.Wallet; // A recipient address to receive hook transfers
 
-  beforeAll(() => {
+  beforeAll(async () => {
     // Set up provider and wallet
     provider = new ethers.JsonRpcProvider(CONFIG.rpcUrl);
 
@@ -92,9 +93,14 @@ describe("Hooks Trampoline Orders", () => {
 
     addresses = getAddresses();
     allAddresses = loadAddresses();
+
+    // Sync container time once at the start to prevent order expiration
+    await syncContainerTime(provider);
   });
 
   beforeEach(async () => {
+    // Container time sync removed - syncing only in beforeAll to prevent accumulation
+
     // Reset wallet connection to force nonce refresh between tests
     // This prevents "nonce has already been used" errors when running tests sequentially
     const privateKey = userWallet.privateKey;
@@ -272,7 +278,7 @@ describe("Hooks Trampoline Orders", () => {
 
       // Wait for settlement
       console.log(`   Waiting for settlement...`);
-      const settled = await waitForOrderExecution(orderUid, 180);
+      const settled = await waitForOrderExecution(orderUid, 180, provider);
       expect(settled).toBe(true);
 
       // Verify balances after settlement
@@ -309,7 +315,7 @@ describe("Hooks Trampoline Orders", () => {
 
       console.log(`\n   ✅ Pre-hook executed successfully!`);
       console.log(`   ✅ Transferred ${formatBalance(preHookTransferAmount, getTokenDecimals(sellToken))} ${sellToken} to recipient via pre-hook`);
-    }, 300000); // 5 minutes timeout
+    }, 180000); // 3 minutes timeout
   });
 
   describe("Post-Hook Execution", () => {
@@ -476,7 +482,7 @@ describe("Hooks Trampoline Orders", () => {
 
       // Wait for settlement
       console.log(`   Waiting for settlement...`);
-      const settled = await waitForOrderExecution(orderUid, 180);
+      const settled = await waitForOrderExecution(orderUid, 180, provider);
       expect(settled).toBe(true);
 
       // Verify balances after settlement
@@ -514,7 +520,7 @@ describe("Hooks Trampoline Orders", () => {
 
       console.log(`\n   ✅ Post-hook executed successfully!`);
       console.log(`   ✅ Transferred ${formatBalance(postHookTransferAmount, getTokenDecimals(buyToken))} ${buyToken} to recipient via post-hook`);
-    }, 300000); // 5 minutes timeout
+    }, 180000); // 3 minutes timeout
   });
 
   describe("Pre and Post Hooks Together", () => {
@@ -712,7 +718,7 @@ describe("Hooks Trampoline Orders", () => {
 
       // Wait for settlement
       console.log(`   Waiting for settlement...`);
-      const settled = await waitForOrderExecution(orderUid, 180);
+      const settled = await waitForOrderExecution(orderUid, 180, provider);
       expect(settled).toBe(true);
 
       // Verify balances after settlement
@@ -762,6 +768,6 @@ describe("Hooks Trampoline Orders", () => {
       console.log(`\n   ✅ Both pre and post hooks executed successfully!`);
       console.log(`   ✅ Pre-hook: Transferred ${formatBalance(preHookTransferAmount, getTokenDecimals(sellToken))} ${sellToken}`);
       console.log(`   ✅ Post-hook: Transferred ${formatBalance(postHookTransferAmount, getTokenDecimals(buyToken))} ${buyToken}`);
-    }, 300000); // 5 minutes timeout
+    }, 180000); // 3 minutes timeout
   });
 });

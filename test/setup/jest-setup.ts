@@ -1,14 +1,80 @@
 /**
  * Jest global setup
- * Checks if required services are running before tests start
+ * Cleans database and checks if required services are running before tests start
  */
 
 import dotenv from 'dotenv';
 import path from 'path';
+import { execSync } from 'child_process';
+
+/**
+ * Clean the test database to ensure fresh state for integration tests.
+ * Removes old orders that would interfere with tests by causing "insufficient_balance" errors.
+ */
+async function cleanDatabase() {
+  try {
+    // Check if database volume exists
+    const volumeExists = execSync(
+      'docker volume ls --format "{{.Name}}" | grep -q "^offline-mode_postgres$"',
+      { stdio: 'pipe' }
+    ).toString();
+
+    // Check if database is running
+    try {
+      execSync('docker compose ps db --format json | grep -q "running"', { stdio: 'pipe' });
+    } catch {
+      // Database not running, no cleanup needed
+      return;
+    }
+
+    console.log('🧹 Cleaning database for fresh test run...\n');
+
+    // Stop dependent services
+    execSync('docker compose stop orderbook autopilot driver baseline watch-tower', { stdio: 'ignore' });
+
+    // Remove database and volume
+    execSync('docker compose down db', { stdio: 'ignore' });
+    execSync('docker volume rm offline-mode_postgres', { stdio: 'ignore' });
+
+    // Restart database
+    execSync('docker compose up -d db', { stdio: 'ignore' });
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
+    // Run migrations
+    execSync('docker compose up -d db-migrations', { stdio: 'ignore' });
+    await new Promise(resolve => setTimeout(resolve, 10000));
+
+    // Start application services
+    execSync('docker compose up -d orderbook autopilot driver baseline watch-tower', { stdio: 'ignore' });
+
+    // Wait for services to be healthy
+    let attempts = 0;
+    const maxAttempts = 30;
+
+    while (attempts < maxAttempts) {
+      try {
+        execSync('docker compose ps orderbook --format json | grep -q "healthy"', { stdio: 'pipe' });
+        console.log('✅ Database cleaned and services ready!\n');
+        return;
+      } catch {
+        attempts++;
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+
+    console.warn('⚠️  Services may not be fully ready, but continuing with tests...\n');
+  } catch (error) {
+    // Silently continue if cleanup fails - services might be in a state where cleanup isn't needed
+  }
+}
 
 export default async function globalSetup() {
   // Load environment variables from .env file
   dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
+  // Clean database before running tests to prevent old orders from interfering
+  await cleanDatabase();
+
   console.log('\n🔍 Checking if services are running...\n');
 
   const requiredServices = [

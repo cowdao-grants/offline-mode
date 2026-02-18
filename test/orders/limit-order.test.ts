@@ -22,13 +22,14 @@ import {
   getTokenBalance,
   approveToken,
 } from "../utils/order-helpers";
+import { syncContainerTime } from "../utils/anvil-helpers";
 
 describe("Limit Orders", () => {
   let provider: ethers.Provider;
   let userWallet: ethers.Wallet;
   let addresses: ReturnType<typeof getAddresses>;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     // Set up provider and wallet
     provider = new ethers.JsonRpcProvider(CONFIG.rpcUrl);
 
@@ -38,6 +39,9 @@ describe("Limit Orders", () => {
     userWallet = new ethers.Wallet(privateKey, provider);
 
     addresses = getAddresses();
+
+    // Sync container time once at the start to prevent order expiration
+    await syncContainerTime(provider);
   });
 
   describe("Sell Order (Limit Order with sellAmount)", () => {
@@ -161,7 +165,7 @@ describe("Limit Orders", () => {
       console.log(`Order submitted: ${orderUid}`);
 
       // Wait for settlement
-      const settled = await waitForOrderExecution(orderUid, 210);
+      const settled = await waitForOrderExecution(orderUid, 180, provider);
       expect(settled).toBe(true);
 
       // Verify balances changed
@@ -192,7 +196,7 @@ describe("Limit Orders", () => {
       // Assertions
       expect(finalSellBalance).toBeLessThan(initialSellBalance);
       expect(finalBuyBalance).toBeGreaterThan(initialBuyBalance);
-    }, 300000); // 5 minutes timeout
+    }, 180000); // 3 minutes timeout
 
     it("should place and settle a USDC -> DAI limit order", async () => {
       const sellToken = "USDC";
@@ -278,7 +282,7 @@ describe("Limit Orders", () => {
       expect(orderUid).toBeDefined();
       console.log(`Order submitted: ${orderUid}`);
 
-      const settled = await waitForOrderExecution(orderUid, 210);
+      const settled = await waitForOrderExecution(orderUid, 180, provider);
       expect(settled).toBe(true);
 
       const finalSellBalance = await getTokenBalance(
@@ -294,6 +298,6 @@ describe("Limit Orders", () => {
 
       expect(finalSellBalance).toBeLessThan(initialSellBalance);
       expect(finalBuyBalance).toBeGreaterThan(initialBuyBalance);
-    }, 300000); // 5 minutes timeout
+    }, 180000); // 3 minutes timeout
   });
 });

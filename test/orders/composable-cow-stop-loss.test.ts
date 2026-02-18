@@ -7,6 +7,7 @@
 
 import { ethers } from "ethers";
 import { loadAddresses } from "../utils/loadAddresses";
+import { advanceTime, syncContainerTime } from "../utils/anvil-helpers";
 
 // Configuration
 const CONFIG = {
@@ -15,7 +16,7 @@ const CONFIG = {
   chainId: 1,
 };
 
-const timeoutMs = 10 * 90 * 1000; // 15 minutes timeout
+const timeoutMs = 300000; // 5 minutes timeout
 
 // ABIs
 const ERC20_ABI = [
@@ -35,7 +36,7 @@ describe("ComposableCow Stop-Loss Orders", () => {
   let addresses: ReturnType<typeof loadAddresses>;
   let safeWallet: string;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     provider = new ethers.JsonRpcProvider(CONFIG.rpcUrl);
 
     // Use Anvil account #1
@@ -45,6 +46,9 @@ describe("ComposableCow Stop-Loss Orders", () => {
 
     addresses = loadAddresses();
     safeWallet = process.env.TEST_USER_SAFE_ADDRESS!;
+
+    // Sync container time once at the start to prevent order expiration
+    await syncContainerTime(provider);
   });
 
   it(
@@ -293,10 +297,14 @@ describe("ComposableCow Stop-Loss Orders", () => {
       let orderExecuted = false;
       const maxWaitTime = timeoutMs / 1000;
       let elapsed = 0;
+      const checkIntervalSeconds = 10;
 
       while (elapsed < maxWaitTime && !orderExecuted) {
-        await new Promise((resolve) => setTimeout(resolve, 10000));
-        elapsed += 10;
+        // Advance time in Anvil to speed up the test
+        await advanceTime(provider, checkIntervalSeconds);
+        // Small actual delay to allow services to process
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        elapsed += checkIntervalSeconds;
 
         const currentWethBalance = await weth.balanceOf(safeWallet);
         const currentUsdtBalance = await usdt.balanceOf(safeWallet);

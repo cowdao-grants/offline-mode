@@ -9,6 +9,8 @@
 
 import { ethers } from "ethers";
 import { loadAddresses } from "../utils/loadAddresses";
+// Note: TWAP tests do not use syncContainerTime because TWAP validation
+// is time-sensitive and syncing can cause "after twap finish" errors
 
 // Configuration
 const CONFIG = {
@@ -16,7 +18,7 @@ const CONFIG = {
   orderbookUrl: process.env.ORDERBOOK_URL || "http://localhost:8080",
   chainId: 1,
 };
-const timeoutMs = 10 * 90 * 1000;
+const timeoutMs = 600000; // 10 minutes timeout (TWAP needs time for all 3 parts to start and settle)
 // ABIs
 const ERC20_ABI = [
   "function balanceOf(address) view returns (uint256)",
@@ -180,7 +182,7 @@ describe("ComposableCow TWAP Orders", () => {
         receiver: safeWallet,
         partSellAmount: partSellAmount.toString(),
         minPartLimit: minPartLimit.toString(),
-        t0: currentTime + 10, // Start 10 seconds from now
+        t0: currentTime + 60, // Start 60 seconds from now (gives watch-tower time to discover order)
         n: 3,
         t: 240,
         span: 240,
@@ -270,10 +272,13 @@ describe("ComposableCow TWAP Orders", () => {
       let lastUsdcBalance = initialUsdcBalance;
       const maxWaitTime = timeoutMs / 1000; // 10 minutes
       let elapsed = 0;
+      const checkIntervalSeconds = 10;
 
       while (elapsed < maxWaitTime && partsExecuted < Number(numParts)) {
-        await new Promise((resolve) => setTimeout(resolve, 10000));
-        elapsed += 10;
+        // Wait in real time - TWAP requires actual time to pass for parts to become active
+        // We cannot use advanceTime() because it desynchronizes blockchain time from container time
+        await new Promise((resolve) => setTimeout(resolve, checkIntervalSeconds * 1000));
+        elapsed += checkIntervalSeconds;
 
         const currentUsdcBalance = await usdc.balanceOf(safeWallet);
         const currentWethBalance = await weth.balanceOf(safeWallet);

@@ -4,6 +4,7 @@
 
 import { ethers } from 'ethers';
 import { loadAddresses as loadAddressesFromEnv } from './loadAddresses';
+import { advanceTime } from './anvil-helpers';
 
 // Load addresses and restructure for test compatibility
 function loadAddresses() {
@@ -197,9 +198,14 @@ export async function submitOrder(
   return result.replace(/"/g, '');
 }
 
-export async function waitForOrderExecution(orderUid: string, maxWaitSeconds = 120): Promise<boolean> {
+export async function waitForOrderExecution(
+  orderUid: string,
+  maxWaitSeconds = 120,
+  provider?: ethers.Provider
+): Promise<boolean> {
   const startTime = Date.now();
   const pollInterval = 5000; // 5 seconds
+  const pollIntervalSeconds = pollInterval / 1000;
 
   while ((Date.now() - startTime) / 1000 < maxWaitSeconds) {
     try {
@@ -219,7 +225,21 @@ export async function waitForOrderExecution(orderUid: string, maxWaitSeconds = 1
       // Continue polling
     }
 
-    await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    // Mine a block manually to trigger autopilot auction (every 2 seconds)
+    // This keeps autopilot running without auto-advancing time
+    if (provider) {
+      const jsonRpcProvider = provider as ethers.JsonRpcProvider;
+      try {
+        // Mine a single block - autopilot will pick it up and run an auction
+        await jsonRpcProvider.send('anvil_mine', [1]);
+      } catch (error) {
+        // Ignore mining errors
+      }
+      // Wait 2 seconds (SETTLE_INTERVAL) for autopilot to process
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    } else {
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    }
   }
 
   return false;

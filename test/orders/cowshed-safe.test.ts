@@ -15,6 +15,7 @@
  */
 
 import { ethers } from "ethers";
+import { syncContainerTime } from "../utils/anvil-helpers";
 import {
   CONFIG,
   ORDER_TYPE_FIELDS,
@@ -177,6 +178,9 @@ describe("CoWShed Safe Trading", () => {
     console.log(`   Safe Wallet: ${safeWallet}`);
     console.log(`   Safe Owner: ${wallet.address}`);
     console.log(`   CoWShed Factory: ${allAddresses.cowShed.factory}`);
+
+    // Sync container time once at the start to prevent order expiration
+    await syncContainerTime(provider);
   });
 
   describe("Basic Safe Trading via CoWShed", () => {
@@ -444,7 +448,7 @@ describe("CoWShed Safe Trading", () => {
       console.log("\n📍 STEP 7: Wait for Settlement");
       console.log("   Waiting for order execution...");
 
-      const settled = await waitForOrderExecution(orderUid, 600); // Increased to 10 minutes
+      const settled = await waitForOrderExecution(orderUid, 300, provider); // 5 minutes
       expect(settled).toBe(true);
       console.log("   ✅ Order settled");
 
@@ -480,7 +484,7 @@ describe("CoWShed Safe Trading", () => {
       expect(finalBuyBalance).toBeGreaterThan(initialBuyBalance);
 
       console.log("\n✅ Test passed: Safe traded successfully via CoWShed!");
-    }, 600000); // 10 minutes timeout
+    }, 300000); // 5 minutes timeout (cowshed needs more time)
   });
 
   describe("Safe Trading with Pre-Hook", () => {
@@ -714,7 +718,7 @@ describe("CoWShed Safe Trading", () => {
       // Step 6: Wait for settlement
       console.log("\n📍 STEP 6: Wait for Settlement");
 
-      const settled = await waitForOrderExecution(orderUid, 600); // 10 minutes timeout
+      const settled = await waitForOrderExecution(orderUid, 300, provider); // 5 minutes
       expect(settled).toBe(true);
       console.log("   ✅ Order settled");
 
@@ -742,6 +746,6 @@ describe("CoWShed Safe Trading", () => {
       expect(daiReceived).toBeGreaterThanOrEqual(hookTransferAmount);
 
       console.log("\n✅ Test passed: Pre-hook executed successfully!");
-    }, 600000); // 10 minutes timeout
+    }, 300000); // 5 minutes timeout (cowshed needs more time)
   });
 });

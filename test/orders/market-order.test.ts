@@ -21,13 +21,14 @@ import {
   getTokenBalance,
   approveToken,
 } from "../utils/order-helpers";
+import { syncContainerTime } from "../utils/anvil-helpers";
 
 describe("Market Orders", () => {
   let provider: ethers.Provider;
   let userWallet: ethers.Wallet;
   let addresses: ReturnType<typeof getAddresses>;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     // Set up provider and wallet
     provider = new ethers.JsonRpcProvider(CONFIG.rpcUrl);
 
@@ -37,6 +38,9 @@ describe("Market Orders", () => {
     userWallet = new ethers.Wallet(privateKey, provider);
 
     addresses = getAddresses();
+
+    // Sync container time once at the start to prevent order expiration
+    await syncContainerTime(provider);
   });
 
   describe("Buy Order (Market Order with buyAmount)", () => {
@@ -175,7 +179,7 @@ describe("Market Orders", () => {
       console.log(`Order submitted: ${orderUid}`);
 
       // Wait for settlement
-      const settled = await waitForOrderExecution(orderUid, 180);
+      const settled = await waitForOrderExecution(orderUid, 180, provider);
       expect(settled).toBe(true);
 
       // Verify balances changed
@@ -318,7 +322,7 @@ describe("Market Orders", () => {
       expect(orderUid).toBeDefined();
       console.log(`Order submitted: ${orderUid}`);
 
-      const settled = await waitForOrderExecution(orderUid, 180);
+      const settled = await waitForOrderExecution(orderUid, 180, provider);
       expect(settled).toBe(true);
 
       const finalSellBalance = await getTokenBalance(
@@ -344,6 +348,6 @@ describe("Market Orders", () => {
 
       // Should not receive more than the original quote amount
       expect(buyAmountReceived).toBeLessThanOrEqual(quoteBuyAmount);
-    }, 180000);
+    }, 180000); // 3 minutes timeout
   });
 });
