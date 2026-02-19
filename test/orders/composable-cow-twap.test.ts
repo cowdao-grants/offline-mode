@@ -59,11 +59,15 @@ describe("ComposableCow TWAP Orders", () => {
       console.log(`   TWAP Handler: ${addresses.composableCow.twap}`);
 
       // Setup contracts
-      const usdc = new ethers.Contract(addresses.tokens.USDC, ERC20_ABI, wallet);
+      const usdc = new ethers.Contract(
+        addresses.tokens.USDC,
+        ERC20_ABI,
+        wallet,
+      );
       const weth = new ethers.Contract(
         addresses.tokens.WETH,
         ERC20_ABI,
-        provider
+        provider,
       );
 
       // Step 1: Setup Safe with USDC
@@ -81,27 +85,29 @@ describe("ComposableCow TWAP Orders", () => {
       const usdcFromDeployer = new ethers.Contract(
         addresses.tokens.USDC,
         ERC20_ABI,
-        deployerWallet
+        deployerWallet,
       );
 
       let usdcBalance = await usdc.balanceOf(safeWallet);
       if (usdcBalance < totalSellAmount) {
         console.log(
-          `   Sending ${ethers.formatUnits(totalSellAmount, 6)} USDC to Safe...`
+          `   Sending ${ethers.formatUnits(totalSellAmount, 6)} USDC to Safe...`,
         );
         const transferTx = await usdcFromDeployer.transfer(
           safeWallet,
-          ethers.parseUnits("10000", 6)
+          ethers.parseUnits("10000", 6),
         );
         await transferTx.wait();
         usdcBalance = await usdc.balanceOf(safeWallet);
       }
-      console.log(`   Safe USDC Balance: ${ethers.formatUnits(usdcBalance, 6)} USDC`);
+      console.log(
+        `   Safe USDC Balance: ${ethers.formatUnits(usdcBalance, 6)} USDC`,
+      );
 
       // Approve VaultRelayer from Safe
       const usdcAllowance = await usdc.allowance(
         safeWallet,
-        addresses.cowProtocol.vaultRelayer
+        addresses.cowProtocol.vaultRelayer,
       );
       if (usdcAllowance < totalSellAmount) {
         console.log("   Approving Vault Relayer from Safe...");
@@ -119,11 +125,11 @@ describe("ComposableCow TWAP Orders", () => {
         const usdcAsSafe = new ethers.Contract(
           addresses.tokens.USDC,
           ERC20_ABI,
-          safeSigner
+          safeSigner,
         );
         const approveTx = await usdcAsSafe.approve(
           addresses.cowProtocol.vaultRelayer,
-          ethers.parseUnits("1000000", 6)
+          ethers.parseUnits("1000000", 6),
         );
         await approveTx.wait();
         await provider.send("anvil_stopImpersonatingAccount", [safeWallet]);
@@ -146,7 +152,7 @@ describe("ComposableCow TWAP Orders", () => {
 
       const setDomainVerifierData = ethers.AbiCoder.defaultAbiCoder().encode(
         ["bytes32", "address"],
-        [settlementDomainSeparator, addresses.composableCow.composableCoW]
+        [settlementDomainSeparator, addresses.composableCow.composableCoW],
       );
 
       const setVerifierTx = await safeSigner.sendTransaction({
@@ -173,7 +179,7 @@ describe("ComposableCow TWAP Orders", () => {
       const minWethPerUsdc = 0.00027; // Below market rate (same as working script)
       const partUsdcAmount = Number(ethers.formatUnits(partSellAmount, 6));
       const minPartLimit = ethers.parseEther(
-        (partUsdcAmount * minWethPerUsdc).toFixed(18)
+        (partUsdcAmount * minWethPerUsdc).toFixed(18),
       );
 
       const twapConfig = {
@@ -184,21 +190,22 @@ describe("ComposableCow TWAP Orders", () => {
         minPartLimit: minPartLimit.toString(),
         t0: currentTime + 60, // Start 60 seconds from now (gives watch-tower time to discover order)
         n: 3,
-        t: 240,
-        span: 240,
+        t: 90,
+        span: 90,
         appData: ethers.ZeroHash,
       };
 
       console.log("   TWAP Configuration:");
       console.log(
         `   Total: ${ethers.formatUnits(
-          totalSellAmount, 6
-        )} USDC (${numParts} parts of ${ethers.formatUnits(partSellAmount, 6)} USDC)`
+          totalSellAmount,
+          6,
+        )} USDC (${numParts} parts of ${ethers.formatUnits(partSellAmount, 6)} USDC)`,
       );
       console.log(`   Min per Part: ${ethers.formatEther(minPartLimit)} WETH`);
       console.log(`   Interval: ${twapConfig.t} seconds between parts`);
       console.log(
-        `   Start Time: ${new Date(twapConfig.t0 * 1000).toISOString()}`
+        `   Start Time: ${new Date(twapConfig.t0 * 1000).toISOString()}`,
       );
 
       // Encode TWAP data
@@ -226,7 +233,7 @@ describe("ComposableCow TWAP Orders", () => {
           twapConfig.t,
           twapConfig.span,
           twapConfig.appData,
-        ]
+        ],
       );
 
       const salt = ethers.randomBytes(32);
@@ -242,12 +249,12 @@ describe("ComposableCow TWAP Orders", () => {
       const composableCoWAsSafe = new ethers.Contract(
         addresses.composableCow.composableCoW,
         COMPOSABLE_COW_ABI,
-        safeSignerForOrder
+        safeSignerForOrder,
       );
 
       const createTx = await composableCoWAsSafe.create(
         conditionalOrderParams,
-        true
+        true,
       );
       const receipt = await createTx.wait();
       await provider.send("anvil_stopImpersonatingAccount", [safeWallet]);
@@ -277,7 +284,9 @@ describe("ComposableCow TWAP Orders", () => {
       while (elapsed < maxWaitTime && partsExecuted < Number(numParts)) {
         // Wait in real time - TWAP requires actual time to pass for parts to become active
         // We cannot use advanceTime() because it desynchronizes blockchain time from container time
-        await new Promise((resolve) => setTimeout(resolve, checkIntervalSeconds * 1000));
+        await new Promise((resolve) =>
+          setTimeout(resolve, checkIntervalSeconds * 1000),
+        );
         elapsed += checkIntervalSeconds;
 
         const currentUsdcBalance = await usdc.balanceOf(safeWallet);
@@ -289,17 +298,17 @@ describe("ComposableCow TWAP Orders", () => {
           const wethReceived = currentWethBalance - initialWethBalance;
 
           console.log(
-            `   [${elapsed}s] ✅ Part ${partsExecuted}/${numParts} executed!`
+            `   [${elapsed}s] ✅ Part ${partsExecuted}/${numParts} executed!`,
           );
           console.log(`   USDC spent: ${ethers.formatUnits(usdcSpent, 6)}`);
           console.log(
-            `   Total WETH received: ${ethers.formatEther(wethReceived)}\n`
+            `   Total WETH received: ${ethers.formatEther(wethReceived)}\n`,
           );
 
           lastUsdcBalance = currentUsdcBalance;
         } else if (elapsed % 30 === 0) {
           console.log(
-            `   [${elapsed}s] Waiting... (${partsExecuted}/${numParts} parts executed)`
+            `   [${elapsed}s] Waiting... (${partsExecuted}/${numParts} parts executed)`,
           );
         }
       }
@@ -316,13 +325,14 @@ describe("ComposableCow TWAP Orders", () => {
       console.log("   Final Balances:");
       console.log(
         `   USDC: ${ethers.formatUnits(
-          finalUsdcBalance, 6
-        )} (spent ${ethers.formatUnits(totalUsdcSpent, 6)})`
+          finalUsdcBalance,
+          6,
+        )} (spent ${ethers.formatUnits(totalUsdcSpent, 6)})`,
       );
       console.log(
         `   WETH: ${ethers.formatEther(
-          finalWethBalance
-        )} (received ${ethers.formatEther(totalWethReceived)})\n`
+          finalWethBalance,
+        )} (received ${ethers.formatEther(totalWethReceived)})\n`,
       );
 
       // Assertions
@@ -336,22 +346,22 @@ describe("ComposableCow TWAP Orders", () => {
       const expectedUsdcSpent = partSellAmount * BigInt(partsExecuted);
       const tolerance = expectedUsdcSpent / 100n; // 1% tolerance
       expect(totalUsdcSpent).toBeGreaterThanOrEqual(
-        expectedUsdcSpent - tolerance
+        expectedUsdcSpent - tolerance,
       );
       expect(totalUsdcSpent).toBeLessThanOrEqual(expectedUsdcSpent + tolerance);
 
       console.log(
-        `   ✅ SUCCESS: ${partsExecuted}/${numParts} TWAP parts executed!`
+        `   ✅ SUCCESS: ${partsExecuted}/${numParts} TWAP parts executed!`,
       );
 
       if (partsExecuted < Number(numParts)) {
         console.log(
           `   ℹ️  Note: ${
             Number(numParts) - partsExecuted
-          } part(s) not executed (expected in offline environment)`
+          } part(s) not executed (expected in offline environment)`,
         );
       }
     },
-    timeoutMs
+    timeoutMs,
   );
 });
