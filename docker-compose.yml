@@ -138,12 +138,11 @@ services:
   orderbook:
     build:
       context: ./modules/services
-      target: localdev
+      target: orderbook
       dockerfile: ../../Dockerfile
     restart: always
     cap_add:
       - SYS_TIME  # Allow container to change its own system time
-    command: ["cargo", "watch", "-x", "run --bin orderbook"]
     environment:
       - NODE_URL=http://chain:8545
       - DB_WRITE_URL=postgres://db:5432/?user=${POSTGRES_USER}&password=${POSTGRES_PASSWORD}
@@ -179,8 +178,6 @@ services:
       - DISABLE_ORDER_FILTERING=true
       - SKIP_EVENT_SYNC=false
       - HOOKS_CONTRACT_ADDRESS=0x60Bf78233f48eC42eE3F101b9a05eC7878728006
-    volumes:
-      - ./modules/services:/src
     depends_on:
       - db-migrations
       - chain
@@ -191,7 +188,7 @@ services:
       - 6669:6669 # tokio console
     healthcheck:
       test:
-        ["CMD-SHELL", "curl -f http://localhost:80/api/v1/version || exit 1"]
+        ["CMD-SHELL", "wget -q -O- http://localhost:80/api/v1/version || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 12
@@ -200,20 +197,11 @@ services:
   autopilot:
     build:
       context: ./modules/services
-      target: localdev
+      target: autopilot
       dockerfile: ../../Dockerfile
     restart: always
     cap_add:
       - SYS_TIME  # Allow container to change its own system time
-    entrypoint: ["/bin/bash", "-c"]
-    command:
-      - |
-        echo "Waiting for chain to be reachable..."
-        until curl -s -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' http://chain:8545 | grep -q result; do
-          sleep 1
-        done
-        echo "Chain is ready! Building and starting autopilot..."
-        cargo run --bin autopilot
     env_file:
       - .env
       - .env.services
@@ -223,8 +211,6 @@ services:
       - LOG_FILTER=info,autopilot=trace,shared=debug,shared::price_estimation=trace,autopilot::solvable_orders=trace,autopilot::run=trace
       - DRIVERS=baseline|http://driver/baseline|0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
       - OFFLINE_MODE=true
-    volumes:
-      - ./modules/services:/src
     depends_on:
       chain-deployer:
         condition: service_healthy
@@ -264,20 +250,12 @@ services:
   driver:
     build:
       context: ./modules/services
-      target: localdev
+      target: driver
       dockerfile: ../../Dockerfile
     restart: always
     cap_add:
       - SYS_TIME  # Allow container to change its own system time
-    entrypoint: ["/bin/bash", "-c"]
-    command:
-      - |
-        echo "Waiting for chain to be reachable..."
-        until curl -s -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' http://chain:8545 | grep -q result; do
-          sleep 1
-        done
-        echo "Chain is ready! Building and starting driver..."
-        cargo run --bin driver -- --config /workspace/configs/offline/driver.toml
+    command: ["--config", "/workspace/configs/offline/driver.toml"]
     env_file:
       - .env
       - .env.services
@@ -287,7 +265,6 @@ services:
       - RUST_LOG=driver=debug,shared=trace
       - HOOKS_CONTRACT_ADDRESS=0x60Bf78233f48eC42eE3F101b9a05eC7878728006
     volumes:
-      - ./modules/services:/src
       - ./configs:/workspace/configs
     ports:
       - 9000:80 # API & metrics
@@ -302,18 +279,10 @@ services:
   baseline:
     build:
       context: ./modules/services
-      target: localdev
+      target: solvers
       dockerfile: ../../Dockerfile
     restart: always
-    entrypoint: ["/bin/bash", "-c"]
-    command:
-      - |
-        echo "Waiting for chain to be reachable..."
-        until curl -s -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' http://chain:8545 | grep -q result; do
-          sleep 1
-        done
-        echo "Chain is ready! Building and starting baseline solver..."
-        cargo run --bin solvers -- baseline --config /workspace/configs/offline/baseline.toml
+    command: ["baseline", "--config", "/workspace/configs/offline/baseline.toml"]
     env_file:
       - .env
       - .env.services
@@ -321,7 +290,6 @@ services:
       - ADDR=0.0.0.0:80
       - LOG=solvers=trace,shared=trace
     volumes:
-      - ./modules/services:/src
       - ./configs:/workspace/configs
     ports:
       - 9001:80 # API & metrics
