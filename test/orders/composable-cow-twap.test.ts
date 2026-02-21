@@ -9,8 +9,7 @@
 
 import { ethers } from "ethers";
 import { loadAddresses } from "../utils/loadAddresses";
-// Note: TWAP tests do not use syncContainerTime because TWAP validation
-// is time-sensitive and syncing can cause "after twap finish" errors
+import { initializeGlobalSnapshot, revertToGlobalSnapshot } from "../utils/shared-snapshot";
 
 // Configuration
 const CONFIG = {
@@ -38,7 +37,7 @@ describe("ComposableCow TWAP Orders", () => {
   let addresses: ReturnType<typeof loadAddresses>;
   let safeWallet: string;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     provider = new ethers.JsonRpcProvider(CONFIG.rpcUrl);
 
     // Use Anvil account #1
@@ -48,6 +47,18 @@ describe("ComposableCow TWAP Orders", () => {
 
     addresses = loadAddresses();
     safeWallet = process.env.TEST_USER_SAFE_ADDRESS!;
+
+    // The global snapshot is initialized in jest global setup
+    // This is just a no-op call to ensure the module is loaded
+    await initializeGlobalSnapshot(provider);
+  });
+
+  beforeEach(async () => {
+    // Revert to the shared global snapshot before each test
+    await revertToGlobalSnapshot();
+
+    const block = await provider.getBlock("latest");
+    console.log(`\n🔄 Test starting at block ${block?.number} (snapshot restored)`);
   });
 
   it(
@@ -190,8 +201,8 @@ describe("ComposableCow TWAP Orders", () => {
         minPartLimit: minPartLimit.toString(),
         t0: currentTime + 60, // Start 60 seconds from now (gives watch-tower time to discover order)
         n: 3,
-        t: 90,
-        span: 90,
+        t: 90, // Time between parts: 90 seconds
+        span: 90, // Each part valid for 90 seconds (must be <= t to avoid overlap)
         appData: ethers.ZeroHash,
       };
 

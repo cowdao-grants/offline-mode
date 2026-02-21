@@ -140,4 +140,38 @@ export default async function globalSetup() {
   }
 
   console.log('\n✅ Oracle timestamps refreshed!\n');
+
+  // Initialize global snapshot and reset watchtower
+  // This ensures watchtower starts scanning from the snapshot block
+  console.log('📸 Taking global snapshot for all tests...\n');
+
+  try {
+    const { ethers } = await import('ethers');
+    const provider = new ethers.JsonRpcProvider('http://localhost:8545');
+
+    // Import and initialize the global snapshot
+    const { initializeGlobalSnapshot } = await import('../utils/shared-snapshot');
+    await initializeGlobalSnapshot(provider);
+
+    console.log('\n🔄 Resetting watchtower to start from snapshot block...\n');
+
+    // Now reset watchtower so it starts from the snapshot block
+    execSync('docker compose exec -T watch-tower sh -c "rm -rf /usr/src/app/database/*"', {
+      stdio: 'pipe',
+      timeout: 10000
+    });
+
+    execSync('docker compose restart watch-tower', {
+      stdio: 'pipe',
+      timeout: 15000
+    });
+
+    // Wait for watchtower to restart
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
+    console.log('✅ Watchtower reset complete - will scan from snapshot block\n');
+  } catch (error) {
+    console.error('⚠️  Failed to initialize snapshot or reset watchtower:', error);
+    console.error('Continuing anyway...\n');
+  }
 }

@@ -1,5 +1,5 @@
 /**
- * Utility functions for Anvil time manipulation in tests
+ * Utility functions for Anvil time manipulation and snapshot management in tests
  */
 
 import { ethers } from 'ethers';
@@ -166,5 +166,116 @@ export async function syncBlockchainTime(
     console.log(`⏰ Blockchain time synchronized: ${new Date(currentTimestamp * 1000).toISOString()}`);
   } catch (error) {
     // Silently ignore - likely timestamp is already ahead
+  }
+}
+
+/**
+ * Takes a snapshot of the current Anvil blockchain state.
+ * Returns a snapshot ID that can be used to revert to this state later.
+ *
+ * @param provider - The ethers JsonRpcProvider connected to Anvil
+ * @returns The snapshot ID as a hex string
+ *
+ * @example
+ * ```typescript
+ * const snapshotId = await takeSnapshot(provider);
+ * // ... run tests that modify state ...
+ * await revertToSnapshot(provider, snapshotId);
+ * ```
+ */
+export async function takeSnapshot(
+  provider: ethers.JsonRpcProvider | ethers.Provider
+): Promise<string> {
+  const jsonRpcProvider = provider as ethers.JsonRpcProvider;
+  const snapshotId = await jsonRpcProvider.send('evm_snapshot', []);
+  return snapshotId;
+}
+
+/**
+ * Reverts the Anvil blockchain state to a previously taken snapshot.
+ *
+ * @param provider - The ethers JsonRpcProvider connected to Anvil
+ * @param snapshotId - The snapshot ID returned from takeSnapshot()
+ * @returns true if the revert was successful
+ *
+ * @example
+ * ```typescript
+ * const snapshotId = await takeSnapshot(provider);
+ * // ... run tests that modify state ...
+ * await revertToSnapshot(provider, snapshotId);
+ * ```
+ */
+export async function revertToSnapshot(
+  provider: ethers.JsonRpcProvider | ethers.Provider,
+  snapshotId: string
+): Promise<boolean> {
+  const jsonRpcProvider = provider as ethers.JsonRpcProvider;
+  const result = await jsonRpcProvider.send('evm_revert', [snapshotId]);
+  return result;
+}
+
+/**
+ * Helper class for managing Anvil snapshots in test suites.
+ * Automatically takes a snapshot before all tests and reverts before each test.
+ *
+ * @example
+ * ```typescript
+ * describe("My Test Suite", () => {
+ *   let provider: ethers.JsonRpcProvider;
+ *   const snapshot = new SnapshotManager();
+ *
+ *   beforeAll(async () => {
+ *     provider = new ethers.JsonRpcProvider("http://localhost:8545");
+ *     await snapshot.takeInitialSnapshot(provider);
+ *   });
+ *
+ *   beforeEach(async () => {
+ *     await snapshot.revertToInitial();
+ *   });
+ *
+ *   it("test 1", async () => {
+ *     // This test starts with clean state
+ *   });
+ *
+ *   it("test 2", async () => {
+ *     // This test also starts with the same clean state
+ *   });
+ * });
+ * ```
+ */
+export class SnapshotManager {
+  private provider?: ethers.JsonRpcProvider | ethers.Provider;
+  private initialSnapshotId?: string;
+
+  /**
+   * Takes the initial snapshot. Call this in beforeAll().
+   */
+  async takeInitialSnapshot(provider: ethers.JsonRpcProvider | ethers.Provider): Promise<void> {
+    this.provider = provider;
+    this.initialSnapshotId = await takeSnapshot(provider);
+    console.log(`📸 Initial snapshot taken: ${this.initialSnapshotId}`);
+  }
+
+  /**
+   * Reverts to the initial snapshot and takes a new one.
+   * Call this in beforeEach() to reset state before each test.
+   */
+  async revertToInitial(): Promise<void> {
+    if (!this.provider || !this.initialSnapshotId) {
+      throw new Error('Must call takeInitialSnapshot() first');
+    }
+
+    await revertToSnapshot(this.provider, this.initialSnapshotId);
+
+    // Take a new snapshot for the next revert
+    // (Anvil snapshots are consumed when reverted)
+    this.initialSnapshotId = await takeSnapshot(this.provider);
+  }
+
+  /**
+   * Gets the current snapshot ID.
+   */
+  getSnapshotId(): string | undefined {
+    return this.initialSnapshotId;
   }
 }

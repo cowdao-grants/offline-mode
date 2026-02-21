@@ -21,12 +21,13 @@ import {
   getTokenBalance,
   approveToken,
 } from "../utils/order-helpers";
-import { syncContainerTime } from "../utils/anvil-helpers";
+import { syncContainerTime, SnapshotManager } from "../utils/anvil-helpers";
 
 describe("Market Orders", () => {
   let provider: ethers.Provider;
   let userWallet: ethers.Wallet;
   let addresses: ReturnType<typeof getAddresses>;
+  const snapshot = new SnapshotManager();
 
   beforeAll(async () => {
     // Set up provider and wallet
@@ -41,6 +42,16 @@ describe("Market Orders", () => {
 
     // Sync container time once at the start to prevent order expiration
     await syncContainerTime(provider);
+
+    // Take initial snapshot for test isolation
+    await snapshot.takeInitialSnapshot(provider);
+  });
+
+  beforeEach(async () => {
+    // Revert to initial snapshot before each test
+    await snapshot.revertToInitial();
+    const block = await provider.getBlock("latest");
+    console.log(`\n🔄 Test starting at block ${block?.number} (snapshot restored)`);
   });
 
   describe("Buy Order (Market Order with buyAmount)", () => {

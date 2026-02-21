@@ -25,7 +25,8 @@ import {
   approveToken,
 } from "../utils/order-helpers";
 import { loadAddresses } from "../utils/loadAddresses";
-import { syncContainerTime } from "../utils/anvil-helpers";
+import { syncContainerTime, SnapshotManager } from "../utils/anvil-helpers";
+import { execSync } from "child_process";
 
 // ERC20 ABI for encoding hook calls
 const ERC20_ABI = [
@@ -76,6 +77,7 @@ describe("Hooks Trampoline Orders", () => {
   let addresses: ReturnType<typeof getAddresses>;
   let allAddresses: ReturnType<typeof loadAddresses>;
   let hookRecipient: ethers.Wallet; // A recipient address to receive hook transfers
+  const snapshot = new SnapshotManager();
 
   beforeAll(async () => {
     // Set up provider and wallet
@@ -96,21 +98,24 @@ describe("Hooks Trampoline Orders", () => {
 
     // Sync container time once at the start to prevent order expiration
     await syncContainerTime(provider);
+
+    // Take initial snapshot for test isolation
+    await snapshot.takeInitialSnapshot(provider);
   });
 
   beforeEach(async () => {
-    // Container time sync removed - syncing only in beforeAll to prevent accumulation
+    // Revert to initial snapshot before each test
+    await snapshot.revertToInitial();
 
-    // Reset wallet connection to force nonce refresh between tests
-    // This prevents "nonce has already been used" errors when running tests sequentially
+    const block = await provider.getBlock("latest");
+    console.log(`\n🔄 Test starting at block ${block?.number} (snapshot restored)`);
+
+    // Reset wallet connection to force nonce refresh after snapshot restore
     const privateKey = userWallet.privateKey;
     userWallet = new ethers.Wallet(privateKey, provider);
 
     const recipientKey = hookRecipient.privateKey;
     hookRecipient = new ethers.Wallet(recipientKey, provider);
-
-    // Add a small delay to ensure previous transactions are fully processed
-    await new Promise((resolve) => setTimeout(resolve, 100));
   });
 
   describe("Pre-Hook Execution", () => {
@@ -274,7 +279,7 @@ describe("Hooks Trampoline Orders", () => {
         userWallet.address
       );
       expect(orderUid).toBeDefined();
-      console.log(`   Order submitted: ${orderUid}`);
+      console.log(`   ✅ ORDER_ID: ${orderUid}`);
 
       // Wait for settlement
       console.log(`   Waiting for settlement...`);
@@ -478,7 +483,7 @@ describe("Hooks Trampoline Orders", () => {
         userWallet.address
       );
       expect(orderUid).toBeDefined();
-      console.log(`   Order submitted: ${orderUid}`);
+      console.log(`   ✅ ORDER_ID: ${orderUid}`);
 
       // Wait for settlement
       console.log(`   Waiting for settlement...`);
@@ -525,22 +530,36 @@ describe("Hooks Trampoline Orders", () => {
 
   describe("Pre and Post Hooks Together", () => {
     it("should execute both pre and post hooks in a single order", async () => {
-      const sellToken = "DAI";
-      const buyToken = "USDC";
-      const sellAmount = parseAmount("500e18"); // Sell 500 DAI
+      // Note: Removed service restart as it causes autopilot balance checking issues
+      // The services should still be running from the previous tests
+
+      const sellToken = "USDC";
+      const buyToken = "WETH";
+      const preHookToken = "DAI"; // Use a different token for pre-hook to avoid conflicts
+      const postHookToken = "WETH"; // Use buy token for post-hook
+      const sellAmount = parseAmount("1000e6"); // Sell 1000 USDC
       const preHookTransferAmount = parseAmount("5e18"); // Transfer 5 DAI in pre-hook
-      const postHookTransferAmount = parseAmount("50e6"); // Transfer 50 USDC in post-hook
+      const postHookTransferAmount = parseAmount("0.05e18"); // Transfer 0.05 WETH in post-hook
 
       const sellTokenAddress = getTokenAddress(sellToken);
       const buyTokenAddress = getTokenAddress(buyToken);
+      const preHookTokenAddress = getTokenAddress(preHookToken);
+      const postHookTokenAddress = getTokenAddress(postHookToken);
 
-      // Ensure user has enough sell tokens (including pre-hook transfer)
-      const totalRequired = sellAmount + preHookTransferAmount;
+      // Ensure user has enough sell tokens
       await ensureTokenBalance(
         provider,
         userWallet.address,
         sellTokenAddress,
-        totalRequired
+        sellAmount
+      );
+
+      // Ensure user has enough tokens for pre-hook
+      await ensureTokenBalance(
+        provider,
+        userWallet.address,
+        preHookTokenAddress,
+        preHookTransferAmount
       );
 
       console.log(`\n📋 Test: Both pre and post hooks`);
@@ -548,31 +567,37 @@ describe("Hooks Trampoline Orders", () => {
       console.log(`   Hook Recipient: ${hookRecipient.address}`);
 
       // Get initial balances
-      const initialUserDaiBalance = await getTokenBalance(
+      const initialUserSellBalance = await getTokenBalance(
         provider,
         sellTokenAddress,
         userWallet.address
       );
-      const initialRecipientDaiBalance = await getTokenBalance(
+      const initialUserPreHookBalance = await getTokenBalance(
         provider,
-        sellTokenAddress,
+        preHookTokenAddress,
+        userWallet.address
+      );
+      const initialRecipientPreHookBalance = await getTokenBalance(
+        provider,
+        preHookTokenAddress,
         hookRecipient.address
       );
-      const initialUserUsdcBalance = await getTokenBalance(
+      const initialUserBuyBalance = await getTokenBalance(
         provider,
         buyTokenAddress,
         userWallet.address
       );
-      const initialRecipientUsdcBalance = await getTokenBalance(
+      const initialRecipientBuyBalance = await getTokenBalance(
         provider,
         buyTokenAddress,
         hookRecipient.address
       );
 
-      console.log(`\n   Initial ${sellToken} balance (user): ${formatBalance(initialUserDaiBalance, getTokenDecimals(sellToken))}`);
-      console.log(`   Initial ${sellToken} balance (recipient): ${formatBalance(initialRecipientDaiBalance, getTokenDecimals(sellToken))}`);
-      console.log(`   Initial ${buyToken} balance (user): ${formatBalance(initialUserUsdcBalance, getTokenDecimals(buyToken))}`);
-      console.log(`   Initial ${buyToken} balance (recipient): ${formatBalance(initialRecipientUsdcBalance, getTokenDecimals(buyToken))}`);
+      console.log(`\n   Initial ${sellToken} balance (user): ${formatBalance(initialUserSellBalance, getTokenDecimals(sellToken))}`);
+      console.log(`   Initial ${preHookToken} balance (user): ${formatBalance(initialUserPreHookBalance, getTokenDecimals(preHookToken))}`);
+      console.log(`   Initial ${preHookToken} balance (recipient): ${formatBalance(initialRecipientPreHookBalance, getTokenDecimals(preHookToken))}`);
+      console.log(`   Initial ${buyToken} balance (user): ${formatBalance(initialUserBuyBalance, getTokenDecimals(buyToken))}`);
+      console.log(`   Initial ${buyToken} balance (recipient): ${formatBalance(initialRecipientBuyBalance, getTokenDecimals(buyToken))}`);
 
       // Approve VaultRelayer
       await approveToken(
@@ -583,49 +608,49 @@ describe("Hooks Trampoline Orders", () => {
       );
 
       // Approve HooksTrampoline to spend tokens for pre-hook
-      console.log(`   Approving HooksTrampoline to spend ${sellToken} for pre-hook...`);
+      console.log(`   Approving HooksTrampoline to spend ${preHookToken} for pre-hook...`);
       await approveToken(
         userWallet,
-        sellTokenAddress,
+        preHookTokenAddress,
         allAddresses.cowProtocol.hooksTrampoline,
         preHookTransferAmount
       );
 
-      // Approve HooksTrampoline to spend USDC for post-hook
-      console.log(`   Approving HooksTrampoline to spend ${buyToken} for post-hook...`);
+      // Approve HooksTrampoline to spend WETH for post-hook
+      console.log(`   Approving HooksTrampoline to spend ${postHookToken} for post-hook...`);
       await approveToken(
         userWallet,
-        buyTokenAddress,
+        postHookTokenAddress,
         allAddresses.cowProtocol.hooksTrampoline,
-        parseAmount("1000e6") // Approve 1000 USDC (more than enough for 50 USDC post-hook)
+        parseAmount("1e18") // Approve 1 WETH (more than enough for 0.05 WETH post-hook)
       );
 
       // Create pre-hook: Transfer DAI from user to recipient
       // Note: Using transferFrom since hooks execute from HooksTrampoline contract
-      const daiInterface = new ethers.Interface(ERC20_ABI);
-      const preHookCallData = daiInterface.encodeFunctionData("transferFrom", [
+      const preHookInterface = new ethers.Interface(ERC20_ABI);
+      const preHookCallData = preHookInterface.encodeFunctionData("transferFrom", [
         userWallet.address, // from (user)
         hookRecipient.address, // to (recipient)
         preHookTransferAmount, // amount
       ]);
 
       const preHook = {
-        target: sellTokenAddress,
+        target: preHookTokenAddress,
         callData: preHookCallData,
         gasLimit: "100000",
       };
 
-      // Create post-hook: Transfer USDC from user to recipient
+      // Create post-hook: Transfer WETH from user to recipient
       // Note: Using transferFrom since hooks execute from HooksTrampoline contract
-      const usdcInterface = new ethers.Interface(ERC20_ABI);
-      const postHookCallData = usdcInterface.encodeFunctionData("transferFrom", [
+      const postHookInterface = new ethers.Interface(ERC20_ABI);
+      const postHookCallData = postHookInterface.encodeFunctionData("transferFrom", [
         userWallet.address, // from (user)
         hookRecipient.address, // to (recipient)
         postHookTransferAmount, // amount
       ]);
 
       const postHook = {
-        target: buyTokenAddress,
+        target: postHookTokenAddress,
         callData: postHookCallData,
         gasLimit: "100000",
       };
@@ -714,7 +739,7 @@ describe("Hooks Trampoline Orders", () => {
         userWallet.address
       );
       expect(orderUid).toBeDefined();
-      console.log(`   Order submitted: ${orderUid}`);
+      console.log(`   ✅ ORDER_ID: ${orderUid}`);
 
       // Wait for settlement
       console.log(`   Waiting for settlement...`);
@@ -722,51 +747,60 @@ describe("Hooks Trampoline Orders", () => {
       expect(settled).toBe(true);
 
       // Verify balances after settlement
-      const finalUserDaiBalance = await getTokenBalance(
+      const finalUserSellBalance = await getTokenBalance(
         provider,
         sellTokenAddress,
         userWallet.address
       );
-      const finalRecipientDaiBalance = await getTokenBalance(
+      const finalUserPreHookBalance = await getTokenBalance(
         provider,
-        sellTokenAddress,
+        preHookTokenAddress,
+        userWallet.address
+      );
+      const finalRecipientPreHookBalance = await getTokenBalance(
+        provider,
+        preHookTokenAddress,
         hookRecipient.address
       );
-      const finalUserUsdcBalance = await getTokenBalance(
+      const finalUserBuyBalance = await getTokenBalance(
         provider,
         buyTokenAddress,
         userWallet.address
       );
-      const finalRecipientUsdcBalance = await getTokenBalance(
+      const finalRecipientBuyBalance = await getTokenBalance(
         provider,
         buyTokenAddress,
         hookRecipient.address
       );
 
-      console.log(`\n   Final ${sellToken} balance (user): ${formatBalance(finalUserDaiBalance, getTokenDecimals(sellToken))}`);
-      console.log(`   Final ${sellToken} balance (recipient): ${formatBalance(finalRecipientDaiBalance, getTokenDecimals(sellToken))}`);
-      console.log(`   Final ${buyToken} balance (user): ${formatBalance(finalUserUsdcBalance, getTokenDecimals(buyToken))}`);
-      console.log(`   Final ${buyToken} balance (recipient): ${formatBalance(finalRecipientUsdcBalance, getTokenDecimals(buyToken))}`);
+      console.log(`\n   Final ${sellToken} balance (user): ${formatBalance(finalUserSellBalance, getTokenDecimals(sellToken))}`);
+      console.log(`   Final ${preHookToken} balance (user): ${formatBalance(finalUserPreHookBalance, getTokenDecimals(preHookToken))}`);
+      console.log(`   Final ${preHookToken} balance (recipient): ${formatBalance(finalRecipientPreHookBalance, getTokenDecimals(preHookToken))}`);
+      console.log(`   Final ${buyToken} balance (user): ${formatBalance(finalUserBuyBalance, getTokenDecimals(buyToken))}`);
+      console.log(`   Final ${buyToken} balance (recipient): ${formatBalance(finalRecipientBuyBalance, getTokenDecimals(buyToken))}`);
 
       // Assertions
-      // User should have sold DAI + transferred pre-hook amount
-      expect(finalUserDaiBalance).toBeLessThan(initialUserDaiBalance);
+      // User should have sold USDC
+      expect(finalUserSellBalance).toBeLessThan(initialUserSellBalance);
+
+      // User should have transferred pre-hook token (DAI)
+      expect(finalUserPreHookBalance).toBeLessThan(initialUserPreHookBalance);
 
       // Recipient should have received pre-hook DAI transfer
-      const recipientDaiReceived =
-        finalRecipientDaiBalance - initialRecipientDaiBalance;
-      expect(recipientDaiReceived).toEqual(preHookTransferAmount);
+      const recipientPreHookReceived =
+        finalRecipientPreHookBalance - initialRecipientPreHookBalance;
+      expect(recipientPreHookReceived).toEqual(preHookTransferAmount);
 
-      // User should have received USDC
-      expect(finalUserUsdcBalance).toBeGreaterThan(initialUserUsdcBalance);
+      // User should have received WETH from the trade
+      expect(finalUserBuyBalance).toBeGreaterThan(initialUserBuyBalance);
 
-      // Recipient should have received post-hook USDC transfer
-      const recipientUsdcReceived =
-        finalRecipientUsdcBalance - initialRecipientUsdcBalance;
-      expect(recipientUsdcReceived).toEqual(postHookTransferAmount);
+      // Recipient should have received post-hook WETH transfer
+      const recipientPostHookReceived =
+        finalRecipientBuyBalance - initialRecipientBuyBalance;
+      expect(recipientPostHookReceived).toEqual(postHookTransferAmount);
 
       console.log(`\n   ✅ Both pre and post hooks executed successfully!`);
-      console.log(`   ✅ Pre-hook: Transferred ${formatBalance(preHookTransferAmount, getTokenDecimals(sellToken))} ${sellToken}`);
+      console.log(`   ✅ Pre-hook: Transferred ${formatBalance(preHookTransferAmount, getTokenDecimals(preHookToken))} ${preHookToken}`);
       console.log(`   ✅ Post-hook: Transferred ${formatBalance(postHookTransferAmount, getTokenDecimals(buyToken))} ${buyToken}`);
     }, 180000); // 3 minutes timeout
   });

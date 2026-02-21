@@ -7,7 +7,8 @@
 
 import { ethers } from "ethers";
 import { loadAddresses } from "../utils/loadAddresses";
-import { advanceTime, syncContainerTime } from "../utils/anvil-helpers";
+import { advanceTime } from "../utils/anvil-helpers";
+import { initializeGlobalSnapshot, revertToGlobalSnapshot } from "../utils/shared-snapshot";
 
 // Configuration
 const CONFIG = {
@@ -47,8 +48,17 @@ describe("ComposableCow Stop-Loss Orders", () => {
     addresses = loadAddresses();
     safeWallet = process.env.TEST_USER_SAFE_ADDRESS!;
 
-    // Sync container time once at the start to prevent order expiration
-    await syncContainerTime(provider);
+    // The global snapshot is initialized in jest global setup
+    // This is just a no-op call to ensure the module is loaded
+    await initializeGlobalSnapshot(provider);
+  });
+
+  beforeEach(async () => {
+    // Revert to the shared global snapshot before each test
+    await revertToGlobalSnapshot();
+
+    const block = await provider.getBlock("latest");
+    console.log(`\n🔄 Test starting at block ${block?.number} (snapshot restored)`);
   });
 
   it(

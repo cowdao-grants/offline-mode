@@ -15,7 +15,7 @@
  */
 
 import { ethers } from "ethers";
-import { syncContainerTime } from "../utils/anvil-helpers";
+import { syncContainerTime, SnapshotManager } from "../utils/anvil-helpers";
 import {
   CONFIG,
   ORDER_TYPE_FIELDS,
@@ -151,6 +151,7 @@ describe("CoWShed Safe Trading", () => {
   let addresses: ReturnType<typeof getAddresses>;
   let allAddresses: ReturnType<typeof loadAddresses>;
   let safeWallet: string;
+  const snapshot = new SnapshotManager();
 
   beforeAll(async () => {
     // Set up provider and wallet
@@ -181,6 +182,16 @@ describe("CoWShed Safe Trading", () => {
 
     // Sync container time once at the start to prevent order expiration
     await syncContainerTime(provider);
+
+    // Take initial snapshot for test isolation
+    await snapshot.takeInitialSnapshot(provider);
+  });
+
+  beforeEach(async () => {
+    // Revert to initial snapshot before each test
+    await snapshot.revertToInitial();
+    const block = await provider.getBlock("latest");
+    console.log(`\n🔄 Test starting at block ${block?.number} (snapshot restored)`);
   });
 
   describe("Basic Safe Trading via CoWShed", () => {
