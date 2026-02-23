@@ -10,7 +10,7 @@ import {
   printSection,
   printDeployment,
 } from './utils';
-import { loadBalancesConfig } from './balances-config';
+import { loadBalancesConfig, calculateTotalRequiredSupply } from './balances-config';
 import { execSync } from 'child_process';
 import { logger, indent } from './logger';
 
@@ -78,13 +78,19 @@ export async function deployTokens(config: DeploymentConfig): Promise<TokenAddre
   // Mint tokens to deployer
   logger.debug('Minting tokens to deployer');
 
-  // Load token supply constants from config
-  const balancesConfig = loadBalancesConfig();
-  const WETH_SUPPLY = balancesConfig.tokens.WETH.initialSupply;
-  const USDC_SUPPLY = balancesConfig.tokens.USDC.initialSupply;
-  const DAI_SUPPLY = balancesConfig.tokens.DAI.initialSupply;
-  const USDT_SUPPLY = balancesConfig.tokens.USDT.initialSupply;
-  const GNO_SUPPLY = balancesConfig.tokens.GNO.initialSupply;
+  // Calculate total required supply (liquidity pools + user balances)
+  // This ensures we have enough tokens even if user balances exceed initialSupply
+  const WETH_SUPPLY = calculateTotalRequiredSupply('WETH');
+  const USDC_SUPPLY = calculateTotalRequiredSupply('USDC');
+  const DAI_SUPPLY = calculateTotalRequiredSupply('DAI');
+  const USDT_SUPPLY = calculateTotalRequiredSupply('USDT');
+  const GNO_SUPPLY = calculateTotalRequiredSupply('GNO');
+
+  logger.trace(indent(`WETH total supply needed: ${WETH_SUPPLY}`));
+  logger.trace(indent(`USDC total supply needed: ${USDC_SUPPLY}`));
+  logger.trace(indent(`DAI total supply needed: ${DAI_SUPPLY}`));
+  logger.trace(indent(`USDT total supply needed: ${USDT_SUPPLY}`));
+  logger.trace(indent(`GNO total supply needed: ${GNO_SUPPLY}`));
 
   // Mint WETH (treat as ERC20 instead of wrapping ETH)
   logger.trace(indent('Minting WETH'));

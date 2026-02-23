@@ -70,3 +70,39 @@ export function getUserConfig(username: string): UserConfig {
   }
   return user;
 }
+
+/**
+ * Calculate total required supply for a token
+ * Sums: liquidity pool amounts + user balances
+ */
+export function calculateTotalRequiredSupply(tokenSymbol: string): string {
+  const config = loadBalancesConfig();
+
+  let total = BigInt(0);
+
+  // Add amounts from all liquidity pools
+  for (const [pairName, poolConfig] of Object.entries(config.defi.uniswapV2)) {
+    const tokens = pairName.split('_');
+
+    // Check if this token is token0 in the pair
+    if (tokens[0] === tokenSymbol) {
+      total += BigInt(poolConfig.token0Amount);
+    }
+    // Check if this token is token1 in the pair
+    if (tokens[1] === tokenSymbol) {
+      total += BigInt(poolConfig.token1Amount);
+    }
+  }
+
+  // Add amounts from all user balances
+  for (const userConfig of Object.values(config.users)) {
+    if (userConfig.tokens[tokenSymbol]) {
+      // Skip ETH as it's not an ERC20 token
+      if (tokenSymbol !== 'ETH') {
+        total += BigInt(userConfig.tokens[tokenSymbol]);
+      }
+    }
+  }
+
+  return total.toString();
+}

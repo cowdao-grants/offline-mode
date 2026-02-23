@@ -91,6 +91,13 @@ For more details, see [Foundry Book](https://book.getfoundry.sh/getting-started/
 
    **Why this is needed:** During deployment, the chain-deployer fetches bytecode for contracts like Balances Helper, Signatures, and other auxiliary contracts from mainnet to deploy them at their deterministic addresses locally.
 
+3. **Install Node.js dependencies**:
+   ```bash
+   npm install --legacy-peer-deps
+   ```
+
+   The `--legacy-peer-deps` flag is required to resolve dependency conflicts in the project.
+
 ### Initialize the Environment
 
 1. **Start all services**:

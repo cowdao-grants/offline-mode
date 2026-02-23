@@ -281,8 +281,8 @@ export function printDeploymentSummary(): void {
 export function printOutputFiles(): void {
   logger.info('Output files:');
   logger.info(indent(formatListItem('playground/.env.offline (deployment addresses, auto-generated)')));
-  logger.info(indent(formatListItem('offline-mode/configs/offline/driver.toml (auto-generated)')));
-  logger.info(indent(formatListItem('offline-mode/configs/offline/baseline.toml (auto-generated)')));
+  logger.info(indent(formatListItem('offline-mode/config/offline/driver.toml (auto-generated)')));
+  logger.info(indent(formatListItem('offline-mode/config/offline/baseline.toml (auto-generated)')));
 }
 
 /**

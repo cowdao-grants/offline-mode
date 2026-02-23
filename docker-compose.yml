@@ -88,8 +88,6 @@ services:
     environment:
       - PORT=3000
       - ETH_RPC_URL=http://chain:8545
-    ports:
-      - 3001:3000
     depends_on:
       chain:
         condition: service_healthy
@@ -184,8 +182,6 @@ services:
       - coingecko-mock
     ports:
       - 8080:80 # API
-      - 9586:9586 # metrics
-      - 6669:6669 # tokio console
     healthcheck:
       test:
         ["CMD-SHELL", "wget -q -O- http://localhost:80/api/v1/version || exit 1"]
@@ -220,9 +216,6 @@ services:
         condition: service_healthy
       coingecko-mock:
         condition: service_healthy
-    ports:
-      - 9589:9589 # metrics
-      - 6670:6669 # tokio console
 
   # Watch-tower service for ComposableCow conditional orders
   watch-tower:
@@ -255,7 +248,7 @@ services:
     restart: always
     cap_add:
       - SYS_TIME  # Allow container to change its own system time
-    command: ["--config", "/workspace/configs/offline/driver.toml"]
+    command: ["--config", "/workspace/config/offline/driver.toml"]
     env_file:
       - .env
       - .env.services
@@ -265,10 +258,7 @@ services:
       - RUST_LOG=driver=debug,shared=trace
       - HOOKS_CONTRACT_ADDRESS=0x60Bf78233f48eC42eE3F101b9a05eC7878728006
     volumes:
-      - ./configs:/workspace/configs
-    ports:
-      - 9000:80 # API & metrics
-      - 6671:6669 # tokio console
+      - ./config:/workspace/config
     depends_on:
       chain-deployer:
         condition: service_healthy
@@ -282,7 +272,7 @@ services:
       target: solvers
       dockerfile: ../../Dockerfile
     restart: always
-    command: ["baseline", "--config", "/workspace/configs/offline/baseline.toml"]
+    command: ["baseline", "--config", "/workspace/config/offline/baseline.toml"]
     env_file:
       - .env
       - .env.services
@@ -290,10 +280,7 @@ services:
       - ADDR=0.0.0.0:80
       - LOG=solvers=trace,shared=trace
     volumes:
-      - ./configs:/workspace/configs
-    ports:
-      - 9001:80 # API & metrics
-      - 6672:6669 # tokio console
+      - ./config:/workspace/config
     depends_on:
       chain-deployer:
         condition: service_healthy
@@ -332,8 +319,6 @@ services:
 
   tempo:
     image: grafana/tempo:latest
-    ports:
-      - "4317:4317" # OTLP gRPC
     command: ["-config.file=/etc/tempo.yaml"]
     volumes:
       - ./tempo.yaml:/etc/tempo.yaml

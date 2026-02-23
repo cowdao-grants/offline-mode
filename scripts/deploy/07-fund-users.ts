@@ -33,6 +33,27 @@ export async function fundUsers(
 
     // Transfer each token to the user
     for (const [tokenSymbol, amount] of Object.entries(userConfig.tokens)) {
+      // Handle native ETH specially
+      if (tokenSymbol === 'ETH') {
+        try {
+          logger.trace(indent(`Setting native ETH balance`, 2));
+
+          // Use anvil_setBalance to set native ETH balance
+          // Convert the amount to hex format (0x prefixed)
+          const amountHex = `0x${BigInt(amount).toString(16)}`;
+
+          execSync(
+            `cast rpc anvil_setBalance ${userConfig.address} ${amountHex} --rpc-url ${config.rpcUrl}`,
+            { stdio: 'inherit' }
+          );
+
+          logger.trace(indent(`Native ETH balance set`, 3));
+        } catch (error) {
+          logger.error({ error }, `Failed to set native ETH balance`);
+        }
+        continue;
+      }
+
       const tokenAddress = tokens[tokenSymbol as keyof TokenAddresses];
 
       if (!tokenAddress) {
