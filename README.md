@@ -137,10 +137,58 @@ Once running, you can access:
 
 - **Orderbook API**: http://localhost:8080
 - **Anvil RPC**: http://localhost:8545
-- **Driver API**: http://localhost:9000
 - **Grafana (monitoring)**: http://localhost:3000
 - **Prometheus (metrics)**: http://localhost:9090
 - **Adminer (database)**: http://localhost:8082
+- **Frontend (CoW Swap)**: http://localhost:8000
+- **Explorer**: http://localhost:8001
+
+### Running with Custom Ports (Port Offset)
+
+If you need to run multiple instances or avoid port conflicts, you can use the port offset feature:
+
+```bash
+# Set all ports with an offset
+npm run set-ports 500
+docker-compose up -d
+```
+
+Example output:
+```
+🔧 Setting ports with offset: 500
+✅ Ports configured:
+   CHAIN           9045
+   ORDERBOOK       8580
+   ADMINER         8582
+   DB              5932
+   FRONTEND        8500
+   EXPLORER        8501
+   GRAFANA         3500
+   PROMETHEUS      9590
+
+💡 Now run: docker-compose up -d
+```
+
+With `PORT_OFFSET=500`, all services will run on offset ports:
+- Anvil RPC: 9045 (8545 + 500)
+- Orderbook API: 8580 (8080 + 500)
+- Adminer: 8582 (8082 + 500)
+- PostgreSQL: 5932 (5432 + 500)
+- Frontend: 8500 (8000 + 500)
+- Explorer: 8501 (8001 + 500)
+- Grafana: 3500 (3000 + 500)
+- Prometheus: 9590 (9090 + 500)
+
+**Reset to default ports:**
+
+```bash
+npm run set-ports 0
+docker-compose up -d
+```
+
+**How it works:**
+
+The `npm run set-ports` command updates the `.env` file with calculated port values. Since `.env` is in `.gitignore`, your port configuration won't be committed to git. Docker Compose automatically reads the updated port values from `.env`.
 
 ## Testing
 

@@ -11,6 +11,7 @@
     "build": "forge build",
     "test": "jest",
     "test:watch": "jest --watch",
+    "set-ports": "npx ts-node scripts/set-ports.ts",
     "order:playground": "npx ts-node scripts/orders/playground-order.ts",
     "order:cowshed": "npx ts-node scripts/orders/cowshed-order.ts",
     "order:composable-cow:twap": "npx ts-node scripts/orders/composable-cow/twap.ts",

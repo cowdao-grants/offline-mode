@@ -65,7 +65,7 @@ services:
     volumes:
       - ./state:/state
     ports:
-      - 8545:8545
+      - ${PORT_CHAIN:-8545}:8545
     depends_on:
       chain-deployer:
         condition: service_healthy
@@ -111,13 +111,13 @@ services:
     volumes:
       - postgres:/var/lib/postgresql/data
     ports:
-      - 5432:5432
+      - ${PORT_DB:-5432}:5432
 
   adminer:
     image: adminer
     restart: always
     ports:
-      - 8082:8080
+      - ${PORT_ADMINER:-8082}:8080
     depends_on:
       - db
 
@@ -181,7 +181,7 @@ services:
       - chain
       - coingecko-mock
     ports:
-      - 8080:80 # API
+      - ${PORT_ORDERBOOK:-8080}:80 # API
     healthcheck:
       test:
         ["CMD-SHELL", "wget -q -O- http://localhost:80/api/v1/version || exit 1"]
@@ -301,7 +301,7 @@ services:
       - REACT_APP_NETWORK_URL_PRODUCTION=http://chain:8545
       - REACT_APP_API_URL=http://127.0.0.1:8080
     ports:
-      - 8000:80
+      - ${PORT_FRONTEND:-8000}:80
 
   explorer:
     build:
@@ -315,7 +315,7 @@ services:
       - REACT_APP_NETWORK_NAME=Anvil Offline
       - REACT_APP_NETWORK_URL=http://chain:8545
     ports:
-      - 8001:80
+      - ${PORT_EXPLORER:-8001}:80
 
   tempo:
     image: grafana/tempo:latest
@@ -326,7 +326,7 @@ services:
   grafana:
     image: grafana/grafana:latest
     ports:
-      - "3000:3000"
+      - ${PORT_GRAFANA:-3000}:3000
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
@@ -338,7 +338,7 @@ services:
     image: prom/prometheus:latest
     restart: always
     ports:
-      - "9090:9090"
+      - ${PORT_PROMETHEUS:-9090}:9090
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
 
