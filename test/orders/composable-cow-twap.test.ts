@@ -25,7 +25,7 @@ async function waitForAutopilotSync(expectedBlock: number): Promise<void> {
     try {
       const result = execSync(
         `docker compose exec -T db psql -U postgres -t -c "SELECT MIN(block_number) FROM last_indexed_blocks WHERE contract IN ('onchain_orders', 'ethflow_refunds', 'settlements');"`,
-        { encoding: 'utf8' }
+        { encoding: "utf8" },
       );
       const dbBlock = parseInt(result.trim(), 10);
 
@@ -38,10 +38,12 @@ async function waitForAutopilotSync(expectedBlock: number): Promise<void> {
       // DB not ready, retry
     }
 
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise((resolve) => setTimeout(resolve, 300));
   }
 
-  throw new Error(`Autopilot failed to sync to block ${expectedBlock} after ${maxAttempts} attempts (${maxAttempts * 300}ms)`);
+  throw new Error(
+    `Autopilot failed to sync to block ${expectedBlock} after ${maxAttempts} attempts (${maxAttempts * 300}ms)`,
+  );
 }
 
 // Configuration
@@ -80,7 +82,6 @@ describe("ComposableCow TWAP Orders", () => {
 
     addresses = loadAddresses();
     safeWallet = process.env.TEST_USER_SAFE_ADDRESS!;
-
   });
 
   beforeEach(async () => {
@@ -95,7 +96,9 @@ describe("ComposableCow TWAP Orders", () => {
     const block = await provider.getBlock("latest");
     await waitForAutopilotSync(block!.number);
 
-    console.log(`\n🔄 Test starting at block ${block?.number} (snapshot restored, autopilot synced)`);
+    console.log(
+      `\n🔄 Test starting at block ${block?.number} (snapshot restored, autopilot synced)`,
+    );
   }, 180000); // 180 second timeout for beforeEach (increased from 90s) to allow for watch-tower reset + autopilot initialization on macOS
 
   it(
@@ -236,7 +239,7 @@ describe("ComposableCow TWAP Orders", () => {
         receiver: safeWallet,
         partSellAmount: partSellAmount.toString(),
         minPartLimit: minPartLimit.toString(),
-        t0: currentTime + 120, // Start 120 seconds from now - gives watch-tower time to catch up after snapshot reset
+        t0: currentTime + 60, // Start 120 seconds from now - gives watch-tower time to catch up after snapshot reset
         n: 3,
         t: 90, // Time between parts: 90 seconds
         span: 90, // Each part valid for 90 seconds - must be <= t

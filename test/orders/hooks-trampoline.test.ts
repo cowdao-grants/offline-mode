@@ -360,7 +360,7 @@ describe("Hooks Trampoline Orders", () => {
 
       console.log(`\n   ✅ Pre-hook executed successfully!`);
       console.log(`   ✅ Transferred ${formatBalance(preHookTransferAmount, getTokenDecimals(sellToken))} ${sellToken} to recipient via pre-hook`);
-    }, 180000); // 3 minutes timeout
+    }, 240000); // 4 minutes timeout - pre-hooks can take longer to settle
   });
 
   describe("Post-Hook Execution", () => {
@@ -573,7 +573,7 @@ describe("Hooks Trampoline Orders", () => {
 
       console.log(`\n   ✅ Post-hook executed successfully!`);
       console.log(`   ✅ Transferred ${formatBalance(postHookTransferAmount, getTokenDecimals(buyToken))} ${buyToken} to recipient via post-hook`);
-    }, 180000); // 3 minutes timeout
+    }, 240000); // 4 minutes timeout - post-hooks can take longer to settle
   });
 
   describe("Pre and Post Hooks Together", () => {

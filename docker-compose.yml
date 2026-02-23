@@ -303,11 +303,11 @@ services:
       context: .
       dockerfile: Dockerfile.cowswap
       args:
-        - CHAIN=31337
+        - CHAIN=1
         - ETH_RPC_URL=http://chain:8545
     env_file: .env
     environment:
-      - REACT_APP_NETWORK_ID=31337
+      - REACT_APP_NETWORK_ID=1
       - REACT_APP_NETWORK_NAME=Anvil Offline
       - REACT_APP_NETWORK_URL_PRODUCTION=http://chain:8545
       - REACT_APP_API_URL=http://127.0.0.1:8080
@@ -319,10 +319,10 @@ services:
       context: .
       dockerfile: Dockerfile.explorer
       args:
-        - CHAIN=31337
+        - CHAIN=1
         - ETH_RPC_URL=http://chain:8545
     environment:
-      - REACT_APP_NETWORK_ID=31337
+      - REACT_APP_NETWORK_ID=1
       - REACT_APP_NETWORK_NAME=Anvil Offline
       - REACT_APP_NETWORK_URL=http://chain:8545
     ports:

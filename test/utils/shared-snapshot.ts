@@ -306,10 +306,19 @@ export async function initializeGlobalSnapshot(provider: ethers.JsonRpcProvider)
   // Wait for chain to be healthy after restart
   await waitForChainHealthy();
 
-  // Sync container time once for all tests
-  await syncContainerTime(provider);
+  // Advance blockchain time to current system time
+  console.log("⏰ Advancing blockchain time to current system time...");
+  const currentSystemTime = Math.floor(Date.now() / 1000);
 
-  // Get the current block number (should now be 12593380 from anvil-state.json)
+  // Set next block timestamp to current time
+  await provider.send("evm_setNextBlockTimestamp", [currentSystemTime]);
+
+  // Mine a block to apply the new timestamp
+  await provider.send("evm_mine", []);
+
+  console.log(`✅ Blockchain time advanced to: ${new Date(currentSystemTime * 1000).toISOString()}`);
+
+  // Get the current block number (should now be 12593380 from anvil-state.json + 1 from mining)
   const block = await provider.getBlock("latest");
   if (!block) {
     throw new Error("Failed to get latest block");
@@ -370,14 +379,7 @@ export async function revertToGlobalSnapshot(resetWatchTower: boolean = true): P
         timeout: 15000
       });
 
-      // CRITICAL: Sync container time IMMEDIATELY after starting watch-tower
-      // Must happen BEFORE watch-tower warms up and starts its watchdog
-      // Otherwise watch-tower detects huge time gap and crashes during warmup
-      console.log('⏰ Syncing watch-tower time after restart...');
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for container to fully start
-      await syncContainerTime(provider);
-
-      // NOW wait for watch-tower to be ready (time is already synced, will warm up from snapshot block)
+      // Wait for watch-tower to be ready (blockchain time already matches system time)
       await waitForWatchTowerReady(60);
     } else {
       console.log('⏭️  Skipping watch-tower reset (not needed for this test)');
