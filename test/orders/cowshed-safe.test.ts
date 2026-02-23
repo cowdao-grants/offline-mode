@@ -15,7 +15,40 @@
  */
 
 import { ethers } from "ethers";
-import { syncContainerTime, SnapshotManager } from "../utils/anvil-helpers";
+import { revertToGlobalSnapshot } from "../utils/shared-snapshot";
+import { execSync } from "child_process";
+
+/**
+ * Waits for autopilot to sync to the expected block state
+ * This prevents race conditions between snapshot restore and order submission
+ *
+ * After snapshot revert, autopilot's DB is reset to be BEHIND the blockchain,
+ * so we need to wait for it to CATCH UP to the current block height.
+ */
+async function waitForAutopilotSync(expectedBlock: number): Promise<void> {
+  const maxAttempts = 15;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const result = execSync(
+        `docker compose exec -T db psql -U postgres -t -c "SELECT MIN(block_number) FROM last_indexed_blocks WHERE contract IN ('onchain_orders', 'ethflow_refunds', 'settlements');"`,
+        { encoding: 'utf8' }
+      );
+      const dbBlock = parseInt(result.trim(), 10);
+
+      // Autopilot needs to catch up to within 2 blocks of current blockchain height
+      // This ensures autopilot has indexed recent state changes
+      if (dbBlock >= expectedBlock - 2) {
+        return; // Autopilot has caught up
+      }
+    } catch (error) {
+      // DB not ready, retry
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 300));
+  }
+
+  throw new Error(`Autopilot failed to sync to block ${expectedBlock} after ${maxAttempts} attempts (${maxAttempts * 300}ms)`);
+}
 import {
   CONFIG,
   ORDER_TYPE_FIELDS,
@@ -151,7 +184,6 @@ describe("CoWShed Safe Trading", () => {
   let addresses: ReturnType<typeof getAddresses>;
   let allAddresses: ReturnType<typeof loadAddresses>;
   let safeWallet: string;
-  const snapshot = new SnapshotManager();
 
   beforeAll(async () => {
     // Set up provider and wallet
@@ -181,18 +213,25 @@ describe("CoWShed Safe Trading", () => {
     console.log(`   CoWShed Factory: ${allAddresses.cowShed.factory}`);
 
     // Sync container time once at the start to prevent order expiration
-    await syncContainerTime(provider);
+    
 
     // Take initial snapshot for test isolation
-    await snapshot.takeInitialSnapshot(provider);
   });
 
   beforeEach(async () => {
     // Revert to initial snapshot before each test
-    await snapshot.revertToInitial();
+    // CoWShed Safe orders DON'T need watch-tower (regular orderbook orders)
+    await revertToGlobalSnapshot(false);
+
+    // Create fresh provider to clear nonce cache after blockchain revert
+    provider = new ethers.JsonRpcProvider(CONFIG.rpcUrl);
+    wallet = new ethers.Wallet(wallet.privateKey, provider);
+
     const block = await provider.getBlock("latest");
-    console.log(`\n🔄 Test starting at block ${block?.number} (snapshot restored)`);
-  });
+    await waitForAutopilotSync(block!.number);
+
+    console.log(`\n🔄 Test starting at block ${block?.number} (snapshot restored, autopilot synced)`);
+  }, 90000); // 90 second timeout for beforeEach to allow for chain restart, baseline re-indexing, and watch-tower reset
 
   describe("Basic Safe Trading via CoWShed", () => {
     it("should place and settle a DAI -> WETH order from Safe wallet", async () => {
@@ -600,6 +639,16 @@ describe("CoWShed Safe Trading", () => {
           ethers.parseUnits("1000000", 18)
         );
         console.log("   ✅ HooksTrampoline approved");
+      }
+
+      // CRITICAL: Wait for autopilot to index approval transactions
+      // Approvals created new blocks that autopilot must index before order submission
+      // Otherwise autopilot filters order as invalid (missing approvals)
+      const currentBlock = await provider.getBlock("latest");
+      if (currentBlock) {
+        console.log(`   ⏳ Waiting for autopilot to index approvals (block ${currentBlock.number})...`);
+        await waitForAutopilotSync(currentBlock.number);
+        console.log(`   ✅ Autopilot synced to block ${currentBlock.number}`);
       }
 
       // Step 3: Create hooks in appData (same as EOA approach)

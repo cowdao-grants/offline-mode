@@ -25,8 +25,40 @@ import {
   approveToken,
 } from "../utils/order-helpers";
 import { loadAddresses } from "../utils/loadAddresses";
-import { syncContainerTime, SnapshotManager } from "../utils/anvil-helpers";
+import { revertToGlobalSnapshot } from "../utils/shared-snapshot";
 import { execSync } from "child_process";
+
+/**
+ * Waits for autopilot to sync to the expected block state
+ * This prevents race conditions between snapshot restore and order submission
+ *
+ * After snapshot revert, autopilot's DB is reset to be BEHIND the blockchain,
+ * so we need to wait for it to CATCH UP to the current block height.
+ */
+async function waitForAutopilotSync(expectedBlock: number): Promise<void> {
+  const maxAttempts = 15;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const result = execSync(
+        `docker compose exec -T db psql -U postgres -t -c "SELECT MIN(block_number) FROM last_indexed_blocks WHERE contract IN ('onchain_orders', 'ethflow_refunds', 'settlements');"`,
+        { encoding: 'utf8' }
+      );
+      const dbBlock = parseInt(result.trim(), 10);
+
+      // Autopilot needs to catch up to within 2 blocks of current blockchain height
+      // This ensures autopilot has indexed recent state changes
+      if (dbBlock >= expectedBlock - 2) {
+        return; // Autopilot has caught up
+      }
+    } catch (error) {
+      // DB not ready, retry
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 300));
+  }
+
+  throw new Error(`Autopilot failed to sync to block ${expectedBlock} after ${maxAttempts} attempts (${maxAttempts * 300}ms)`);
+}
 
 // ERC20 ABI for encoding hook calls
 const ERC20_ABI = [
@@ -77,7 +109,6 @@ describe("Hooks Trampoline Orders", () => {
   let addresses: ReturnType<typeof getAddresses>;
   let allAddresses: ReturnType<typeof loadAddresses>;
   let hookRecipient: ethers.Wallet; // A recipient address to receive hook transfers
-  const snapshot = new SnapshotManager();
 
   beforeAll(async () => {
     // Set up provider and wallet
@@ -96,19 +127,20 @@ describe("Hooks Trampoline Orders", () => {
     addresses = getAddresses();
     allAddresses = loadAddresses();
 
-    // Sync container time once at the start to prevent order expiration
-    await syncContainerTime(provider);
-
-    // Take initial snapshot for test isolation
-    await snapshot.takeInitialSnapshot(provider);
   });
 
   beforeEach(async () => {
-    // Revert to initial snapshot before each test
-    await snapshot.revertToInitial();
+    // Revert to the shared global snapshot before each test
+    // Hooks Trampoline orders DON'T need watch-tower (regular orderbook orders with hooks)
+    await revertToGlobalSnapshot(false);
+
+    // Create fresh provider to clear nonce cache after blockchain revert
+    provider = new ethers.JsonRpcProvider(CONFIG.rpcUrl);
 
     const block = await provider.getBlock("latest");
-    console.log(`\n🔄 Test starting at block ${block?.number} (snapshot restored)`);
+    await waitForAutopilotSync(block!.number);
+
+    console.log(`\n🔄 Test starting at block ${block?.number} (snapshot restored, autopilot synced)`);
 
     // Reset wallet connection to force nonce refresh after snapshot restore
     const privateKey = userWallet.privateKey;
@@ -116,7 +148,7 @@ describe("Hooks Trampoline Orders", () => {
 
     const recipientKey = hookRecipient.privateKey;
     hookRecipient = new ethers.Wallet(recipientKey, provider);
-  });
+  }, 90000); // 90 second timeout for beforeEach to allow for chain restart, baseline re-indexing, and watch-tower reset
 
   describe("Pre-Hook Execution", () => {
     it("should execute a pre-hook that transfers tokens before settlement", async () => {
@@ -179,6 +211,14 @@ describe("Hooks Trampoline Orders", () => {
         allAddresses.cowProtocol.hooksTrampoline,
         preHookTransferAmount
       );
+
+      // CRITICAL: Wait for autopilot to index approval transactions
+      // Approvals created new blocks that autopilot must index before order submission
+      // Otherwise autopilot filters order as invalid (missing approvals)
+      const currentBlock = await provider.getBlock("latest");
+      if (currentBlock) {
+        await waitForAutopilotSync(currentBlock.number);
+      }
 
       // Create pre-hook: Transfer DAI from user to hook recipient
       // Note: Using transferFrom since hooks execute from HooksTrampoline contract
@@ -383,6 +423,14 @@ describe("Hooks Trampoline Orders", () => {
         allAddresses.cowProtocol.hooksTrampoline,
         parseAmount("1e18") // Approve 1 WETH (more than enough for 0.05 WETH post-hook)
       );
+
+      // CRITICAL: Wait for autopilot to index approval transactions
+      // Approvals created new blocks that autopilot must index before order submission
+      // Otherwise autopilot filters order as invalid (missing approvals)
+      const currentBlockPostHook = await provider.getBlock("latest");
+      if (currentBlockPostHook) {
+        await waitForAutopilotSync(currentBlockPostHook.number);
+      }
 
       // Create post-hook: Transfer WETH from user to hook recipient
       // Note: Using transferFrom since hooks execute from HooksTrampoline contract
@@ -625,6 +673,14 @@ describe("Hooks Trampoline Orders", () => {
         parseAmount("1e18") // Approve 1 WETH (more than enough for 0.05 WETH post-hook)
       );
 
+      // CRITICAL: Wait for autopilot to index approval transactions
+      // Approvals created new blocks that autopilot must index before order submission
+      // Otherwise autopilot filters order as invalid (missing approvals)
+      const currentBlockBothHooks = await provider.getBlock("latest");
+      if (currentBlockBothHooks) {
+        await waitForAutopilotSync(currentBlockBothHooks.number);
+      }
+
       // Create pre-hook: Transfer DAI from user to recipient
       // Note: Using transferFrom since hooks execute from HooksTrampoline contract
       const preHookInterface = new ethers.Interface(ERC20_ABI);
@@ -802,6 +858,6 @@ describe("Hooks Trampoline Orders", () => {
       console.log(`\n   ✅ Both pre and post hooks executed successfully!`);
       console.log(`   ✅ Pre-hook: Transferred ${formatBalance(preHookTransferAmount, getTokenDecimals(preHookToken))} ${preHookToken}`);
       console.log(`   ✅ Post-hook: Transferred ${formatBalance(postHookTransferAmount, getTokenDecimals(buyToken))} ${buyToken}`);
-    }, 180000); // 3 minutes timeout
+    }, 240000); // 4 minutes timeout - orders with both pre and post hooks take longer to settle (~180s vs ~110s for single hooks)
   });
 });

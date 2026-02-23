@@ -8,7 +8,40 @@
 import { ethers } from "ethers";
 import { loadAddresses } from "../utils/loadAddresses";
 import { advanceTime } from "../utils/anvil-helpers";
-import { initializeGlobalSnapshot, revertToGlobalSnapshot } from "../utils/shared-snapshot";
+import { revertToGlobalSnapshot } from "../utils/shared-snapshot";
+import { execSync } from "child_process";
+
+/**
+ * Waits for autopilot to sync to the expected block state
+ * This prevents race conditions between snapshot restore and order submission
+ *
+ * After snapshot revert, autopilot's DB is reset to be BEHIND the blockchain,
+ * so we need to wait for it to CATCH UP to the current block height.
+ */
+async function waitForAutopilotSync(expectedBlock: number): Promise<void> {
+  const maxAttempts = 15;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const result = execSync(
+        `docker compose exec -T db psql -U postgres -t -c "SELECT MIN(block_number) FROM last_indexed_blocks WHERE contract IN ('onchain_orders', 'ethflow_refunds', 'settlements');"`,
+        { encoding: 'utf8' }
+      );
+      const dbBlock = parseInt(result.trim(), 10);
+
+      // Autopilot needs to catch up to within 2 blocks of current blockchain height
+      // This ensures autopilot has indexed recent state changes
+      if (dbBlock >= expectedBlock - 2) {
+        return; // Autopilot has caught up
+      }
+    } catch (error) {
+      // DB not ready, retry
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 300));
+  }
+
+  throw new Error(`Autopilot failed to sync to block ${expectedBlock} after ${maxAttempts} attempts (${maxAttempts * 300}ms)`);
+}
 
 // Configuration
 const CONFIG = {
@@ -48,18 +81,22 @@ describe("ComposableCow Stop-Loss Orders", () => {
     addresses = loadAddresses();
     safeWallet = process.env.TEST_USER_SAFE_ADDRESS!;
 
-    // The global snapshot is initialized in jest global setup
-    // This is just a no-op call to ensure the module is loaded
-    await initializeGlobalSnapshot(provider);
   });
 
   beforeEach(async () => {
     // Revert to the shared global snapshot before each test
-    await revertToGlobalSnapshot();
+    // Stop-loss orders REQUIRE watch-tower to execute conditional orders
+    await revertToGlobalSnapshot(true);
+
+    // Create fresh provider to clear nonce cache after blockchain revert
+    provider = new ethers.JsonRpcProvider(CONFIG.rpcUrl);
+    wallet = new ethers.Wallet(wallet.privateKey, provider);
 
     const block = await provider.getBlock("latest");
-    console.log(`\n🔄 Test starting at block ${block?.number} (snapshot restored)`);
-  });
+    await waitForAutopilotSync(block!.number);
+
+    console.log(`\n🔄 Test starting at block ${block?.number} (snapshot restored, autopilot synced)`);
+  }, 180000); // 180 second timeout for beforeEach (increased from 90s) to allow for watch-tower reset + autopilot initialization on macOS
 
   it(
     "should create and settle a stop-loss order (WETH -> USDT)",

@@ -15,6 +15,7 @@ module.exports = {
     "!test/setup/**",
   ],
   globalSetup: "<rootDir>/test/setup/jest-setup.ts",
+  globalTeardown: "<rootDir>/test/setup/jest-teardown.ts",
   maxWorkers: 1, // Run tests sequentially to avoid race conditions
   verbose: true,
 };

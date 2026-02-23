@@ -22,13 +22,45 @@ import {
   getTokenBalance,
   approveToken,
 } from "../utils/order-helpers";
-import { syncContainerTime, SnapshotManager } from "../utils/anvil-helpers";
+import { revertToGlobalSnapshot } from "../utils/shared-snapshot";
+import { execSync } from "child_process";
+
+/**
+ * Waits for autopilot to sync to the expected block state
+ * This prevents race conditions between snapshot restore and order submission
+ *
+ * After snapshot revert, autopilot's DB is reset to be BEHIND the blockchain,
+ * so we need to wait for it to CATCH UP to the current block height.
+ */
+async function waitForAutopilotSync(expectedBlock: number): Promise<void> {
+  const maxAttempts = 15;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const result = execSync(
+        `docker compose exec -T db psql -U postgres -t -c "SELECT MIN(block_number) FROM last_indexed_blocks WHERE contract IN ('onchain_orders', 'ethflow_refunds', 'settlements');"`,
+        { encoding: 'utf8' }
+      );
+      const dbBlock = parseInt(result.trim(), 10);
+
+      // Autopilot needs to catch up to within 2 blocks of current blockchain height
+      // This ensures autopilot has indexed recent state changes
+      if (dbBlock >= expectedBlock - 2) {
+        return; // Autopilot has caught up
+      }
+    } catch (error) {
+      // DB not ready, retry
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 300));
+  }
+
+  throw new Error(`Autopilot failed to sync to block ${expectedBlock} after ${maxAttempts} attempts (${maxAttempts * 300}ms)`);
+}
 
 describe("Limit Orders", () => {
   let provider: ethers.Provider;
   let userWallet: ethers.Wallet;
   let addresses: ReturnType<typeof getAddresses>;
-  const snapshot = new SnapshotManager();
 
   beforeAll(async () => {
     // Set up provider and wallet
@@ -42,18 +74,25 @@ describe("Limit Orders", () => {
     addresses = getAddresses();
 
     // Sync container time once at the start to prevent order expiration
-    await syncContainerTime(provider);
+
 
     // Take initial snapshot for test isolation
-    await snapshot.takeInitialSnapshot(provider);
   });
 
   beforeEach(async () => {
     // Revert to initial snapshot before each test
-    await snapshot.revertToInitial();
+    // Limit orders DON'T need watch-tower (regular orderbook orders)
+    await revertToGlobalSnapshot(false);
+
+    // Create fresh provider to clear nonce cache
+    provider = new ethers.JsonRpcProvider(CONFIG.rpcUrl);
+    userWallet = new ethers.Wallet(userWallet.privateKey, provider);
+
     const block = await provider.getBlock("latest");
-    console.log(`\n🔄 Test starting at block ${block?.number} (snapshot restored)`);
-  });
+    await waitForAutopilotSync(block!.number);
+
+    console.log(`\n🔄 Test starting at block ${block?.number} (snapshot restored, autopilot synced)`);
+  }, 90000); // 90 second timeout for beforeEach to allow for chain restart, baseline re-indexing, and watch-tower reset
 
   describe("Sell Order (Limit Order with sellAmount)", () => {
     it("should place and settle a DAI -> WETH limit order", async () => {
@@ -104,6 +143,14 @@ describe("Limit Orders", () => {
         addresses.vaultRelayer,
         sellAmount
       );
+
+      // CRITICAL: Wait for autopilot to index approval transaction
+      // Approval created a new block that autopilot must index before order submission
+      // Otherwise autopilot filters order as invalid (missing approval)
+      const currentBlock = await provider.getBlock("latest");
+      if (currentBlock) {
+        await waitForAutopilotSync(currentBlock.number);
+      }
 
       // Get quote
       const quote = await getQuote(
@@ -241,6 +288,14 @@ describe("Limit Orders", () => {
         addresses.vaultRelayer,
         sellAmount
       );
+
+      // CRITICAL: Wait for autopilot to index approval transaction
+      // Approval created a new block that autopilot must index before order submission
+      // Otherwise autopilot filters order as invalid (missing approval)
+      const currentBlock = await provider.getBlock("latest");
+      if (currentBlock) {
+        await waitForAutopilotSync(currentBlock.number);
+      }
 
       const quote = await getQuote(
         sellTokenAddress,

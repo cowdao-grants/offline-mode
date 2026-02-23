@@ -30,6 +30,8 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+.snapshot-id.tmp
+.snapshot-block.tmp
 
 cache/
 broadcast/
