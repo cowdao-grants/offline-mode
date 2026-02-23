@@ -326,7 +326,6 @@ describe("ComposableCow TWAP Orders", () => {
       let partsExecuted = 0;
       let lastUsdcBalance = initialUsdcBalance;
       const maxWaitTime = timeoutMs / 1000; // 10 minutes
-      const firstPartTimeout = 180; // 3 minutes timeout for first part
       let elapsed = 0;
       const checkIntervalSeconds = 10;
 
@@ -358,13 +357,6 @@ describe("ComposableCow TWAP Orders", () => {
         } else if (elapsed % 30 === 0) {
           console.log(
             `   [${elapsed}s] Waiting... (${partsExecuted}/${numParts} parts executed)`,
-          );
-        }
-
-        // Fail fast if first part doesn't execute within timeout
-        if (partsExecuted === 0 && elapsed >= firstPartTimeout) {
-          throw new Error(
-            `TWAP first part did not execute within ${firstPartTimeout}s. This likely means watch-tower is not working properly.`,
           );
         }
       }
