@@ -14,6 +14,7 @@ import { execSync } from "child_process";
 
 const RPC_URL = process.env.RPC_URL || "http://localhost:8545";
 const ORDERBOOK_URL = process.env.ORDERBOOK_URL || "http://localhost:8080";
+const DRIVER_PORT = process.env.PORT_DRIVER || "9000";
 const SNAPSHOT_FILE = path.join(__dirname, "../../.snapshot-id.tmp");
 const SNAPSHOT_BLOCK_FILE = path.join(__dirname, "../../.snapshot-block.tmp");
 
@@ -180,8 +181,8 @@ async function waitForDriverReady(maxAttempts: number = 30): Promise<void> {
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      // Check if driver metrics endpoint is responding (port 9000)
-      const result = execSync('curl -s -o /dev/null -w "%{http_code}" http://localhost:9000/metrics || echo "000"', {
+      // Check if driver metrics endpoint is responding (using PORT_DRIVER from env)
+      const result = execSync(`curl -s -o /dev/null -w "%{http_code}" http://localhost:${DRIVER_PORT}/metrics || echo "000"`, {
         encoding: 'utf8',
         stdio: 'pipe'
       });

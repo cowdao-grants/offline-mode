@@ -143,12 +143,12 @@ Once running, you can access:
 - **Frontend (CoW Swap)**: http://localhost:8000
 - **Explorer**: http://localhost:8001
 
-### Running with Custom Ports (Port Offset)
+### Running with Custom Ports
 
-If you need to run multiple instances or avoid port conflicts, you can use the port offset feature:
+If you need to run multiple instances or avoid port conflicts, you can easily configure all ports with an offset:
 
 ```bash
-# Set all ports with an offset
+# Set all ports with an offset of 500
 npm run set-ports 500
 docker-compose up -d
 ```
@@ -159,17 +159,28 @@ Example output:
 ✅ Ports configured:
    CHAIN           9045
    ORDERBOOK       8580
+   ORDERBOOK METRICS 10086
+   ORDERBOOK TOKIO 7169
    ADMINER         8582
    DB              5932
+   AUTOPILOT METRICS 10089
+   AUTOPILOT TOKIO 7170
+   DRIVER          9500
+   DRIVER TOKIO    7171
+   BASELINE        9501
+   BASELINE TOKIO  7172
    FRONTEND        8500
    EXPLORER        8501
    GRAFANA         3500
    PROMETHEUS      9590
+   TEMPO           4817
 
 💡 Now run: docker-compose up -d
 ```
 
-With `PORT_OFFSET=500`, all services will run on offset ports:
+With offset 500, all services will run on shifted ports:
+
+**User-facing services:**
 - Anvil RPC: 9045 (8545 + 500)
 - Orderbook API: 8580 (8080 + 500)
 - Adminer: 8582 (8082 + 500)
@@ -178,6 +189,14 @@ With `PORT_OFFSET=500`, all services will run on offset ports:
 - Explorer: 8501 (8001 + 500)
 - Grafana: 3500 (3000 + 500)
 - Prometheus: 9590 (9090 + 500)
+
+**Debugging/Testing services:**
+- Driver API: 9500 (9000 + 500)
+- Baseline API: 9501 (9001 + 500)
+- Orderbook Metrics: 10086 (9586 + 500)
+- Autopilot Metrics: 10089 (9589 + 500)
+- Tempo OTLP: 4817 (4317 + 500)
+- Tokio Console ports: 7169-7172 (6669-6672 + 500)
 
 **Reset to default ports:**
 
@@ -188,7 +207,7 @@ docker-compose up -d
 
 **How it works:**
 
-The `npm run set-ports` command updates the `.env` file with calculated port values. Since `.env` is in `.gitignore`, your port configuration won't be committed to git. Docker Compose automatically reads the updated port values from `.env`.
+The `npm run set-ports <offset>` command updates the individual `PORT_*` variables in your `.env` file with calculated values. Since `.env` is in `.gitignore`, your port configuration won't be committed to git. Docker Compose automatically reads these port values from `.env`.
 
 ## Testing
 

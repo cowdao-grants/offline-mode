@@ -16,12 +16,21 @@ const ENV_FILE = path.join(__dirname, '..', '.env');
 const DEFAULT_PORTS = {
   PORT_CHAIN: 8545,
   PORT_ORDERBOOK: 8080,
+  PORT_ORDERBOOK_METRICS: 9586,
+  PORT_ORDERBOOK_TOKIO: 6669,
   PORT_ADMINER: 8082,
   PORT_DB: 5432,
+  PORT_AUTOPILOT_METRICS: 9589,
+  PORT_AUTOPILOT_TOKIO: 6670,
+  PORT_DRIVER: 9000,
+  PORT_DRIVER_TOKIO: 6671,
+  PORT_BASELINE: 9001,
+  PORT_BASELINE_TOKIO: 6672,
   PORT_FRONTEND: 8000,
   PORT_EXPLORER: 8001,
   PORT_GRAFANA: 3000,
   PORT_PROMETHEUS: 9090,
+  PORT_TEMPO: 4317,
 };
 
 function readEnvFile(): string {
@@ -31,15 +40,7 @@ function readEnvFile(): string {
   return fs.readFileSync(ENV_FILE, 'utf8');
 }
 
-function parseOffset(content: string): number {
-  const match = content.match(/^PORT_OFFSET=(\d+)/m);
-  return match ? parseInt(match[1], 10) : 0;
-}
-
 function updateEnvFile(content: string, offset: number): string {
-  // Update PORT_OFFSET
-  content = content.replace(/^PORT_OFFSET=\d+/m, `PORT_OFFSET=${offset}`);
-
   // Update each port value
   for (const [portName, defaultValue] of Object.entries(DEFAULT_PORTS)) {
     const newValue = defaultValue + offset;
@@ -53,23 +54,26 @@ function updateEnvFile(content: string, offset: number): string {
 function main() {
   const args = process.argv.slice(2);
 
-  // Read current .env
-  const envContent = readEnvFile();
+  // Require offset argument
+  if (args.length === 0) {
+    console.error('❌ Missing offset argument');
+    console.error('Usage: npm run set-ports <offset>');
+    console.error('Example: npm run set-ports 500');
+    console.error('         npm run set-ports 0    (reset to defaults)');
+    process.exit(1);
+  }
 
-  // Determine offset
-  let offset: number;
-  if (args.length > 0) {
-    offset = parseInt(args[0], 10);
-    if (isNaN(offset)) {
-      console.error(`❌ Invalid offset: ${args[0]}`);
-      console.error('Usage: npm run set-ports <offset>');
-      process.exit(1);
-    }
-  } else {
-    offset = parseOffset(envContent);
+  const offset = parseInt(args[0], 10);
+  if (isNaN(offset)) {
+    console.error(`❌ Invalid offset: ${args[0]}`);
+    console.error('Usage: npm run set-ports <offset>');
+    process.exit(1);
   }
 
   console.log(`🔧 Setting ports with offset: ${offset}`);
+
+  // Read current .env
+  const envContent = readEnvFile();
 
   // Update .env file
   const updatedContent = updateEnvFile(envContent, offset);

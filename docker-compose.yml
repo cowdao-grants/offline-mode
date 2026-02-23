@@ -182,6 +182,8 @@ services:
       - coingecko-mock
     ports:
       - ${PORT_ORDERBOOK:-8080}:80 # API
+      - ${PORT_ORDERBOOK_METRICS:-9586}:9586 # metrics
+      - ${PORT_ORDERBOOK_TOKIO:-6669}:6669 # tokio console
     healthcheck:
       test:
         ["CMD-SHELL", "wget -q -O- http://localhost:80/api/v1/version || exit 1"]
@@ -207,6 +209,9 @@ services:
       - LOG_FILTER=info,autopilot=trace,shared=debug,shared::price_estimation=trace,autopilot::solvable_orders=trace,autopilot::run=trace
       - DRIVERS=baseline|http://driver/baseline|0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
       - OFFLINE_MODE=true
+    ports:
+      - ${PORT_AUTOPILOT_METRICS:-9589}:9589 # metrics
+      - ${PORT_AUTOPILOT_TOKIO:-6670}:6669 # tokio console
     depends_on:
       chain-deployer:
         condition: service_healthy
@@ -259,6 +264,9 @@ services:
       - HOOKS_CONTRACT_ADDRESS=0x60Bf78233f48eC42eE3F101b9a05eC7878728006
     volumes:
       - ./config:/workspace/config
+    ports:
+      - ${PORT_DRIVER:-9000}:80 # API & metrics
+      - ${PORT_DRIVER_TOKIO:-6671}:6669 # tokio console
     depends_on:
       chain-deployer:
         condition: service_healthy
@@ -281,6 +289,9 @@ services:
       - LOG=solvers=trace,shared=trace
     volumes:
       - ./config:/workspace/config
+    ports:
+      - ${PORT_BASELINE:-9001}:80 # API & metrics
+      - ${PORT_BASELINE_TOKIO:-6672}:6669 # tokio console
     depends_on:
       chain-deployer:
         condition: service_healthy
@@ -319,6 +330,8 @@ services:
 
   tempo:
     image: grafana/tempo:latest
+    ports:
+      - ${PORT_TEMPO:-4317}:4317 # OTLP gRPC
     command: ["-config.file=/etc/tempo.yaml"]
     volumes:
       - ./tempo.yaml:/etc/tempo.yaml
