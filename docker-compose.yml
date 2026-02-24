@@ -141,6 +141,8 @@ services:
     restart: always
     cap_add:
       - SYS_TIME  # Allow container to change its own system time
+    env_file:
+      - .env
     environment:
       - NODE_URL=http://chain:8545
       - DB_WRITE_URL=postgres://db:5432/?user=${POSTGRES_USER}&password=${POSTGRES_PASSWORD}
@@ -176,6 +178,7 @@ services:
       - DISABLE_ORDER_FILTERING=true
       - SKIP_EVENT_SYNC=false
       - HOOKS_CONTRACT_ADDRESS=0x60Bf78233f48eC42eE3F101b9a05eC7878728006
+      - BASE_TOKENS=${BASE_TOKENS}
     depends_on:
       - db-migrations
       - chain
@@ -304,12 +307,13 @@ services:
       dockerfile: Dockerfile.cowswap
       args:
         - CHAIN=1
-        - ETH_RPC_URL=http://chain:8545
+        - ETH_RPC_URL=http://localhost:8545
     env_file: .env
     environment:
       - REACT_APP_NETWORK_ID=1
       - REACT_APP_NETWORK_NAME=Anvil Offline
-      - REACT_APP_NETWORK_URL_PRODUCTION=http://chain:8545
+      - REACT_APP_NETWORK_URL=http://localhost:8545
+      - REACT_APP_NETWORK_URL_PRODUCTION=http://localhost:8545
       - REACT_APP_API_URL=http://127.0.0.1:8080
     ports:
       - ${PORT_FRONTEND:-8000}:80

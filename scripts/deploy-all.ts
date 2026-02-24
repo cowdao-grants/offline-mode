@@ -25,6 +25,7 @@ import { fundUsers } from './deploy/07-fund-users';
 import { deployComposableCow } from './deploy/08-deploy-composable-cow';
 import { deploySafe } from './deploy/09-deploy-safe';
 import { deployMockOracles } from './deploy/10-deploy-mock-oracles';
+import { deployEthFlow } from './deploy/11-deploy-ethflow';
 
 // ============================================================================
 // CONFIGURATION - Edit these constants as needed
@@ -103,6 +104,10 @@ async function main() {
     logger.info(`  TEST_USER_SAFE_ADDRESS=${safe.testUserSafe}`);
     logger.info('');
     logger.info('ℹ️  These addresses are deterministic and should be added to .env.example');
+
+    // Step 12: Deploy EthFlow Contract
+    const ethFlowAddress = await deployEthFlow(config);
+    logger.info(`  ETHFLOW_ADDRESS=${ethFlowAddress}`);
 
     // Print summary
     printSection('DEPLOYMENT COMPLETE');

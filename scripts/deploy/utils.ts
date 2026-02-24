@@ -24,6 +24,7 @@ export async function runForgeScript(
     skipSimulation?: boolean;
     verbosity?: number;
     env?: Record<string, string>;
+    profile?: string;
   } = {}
 ): Promise<void> {
   const {
@@ -31,6 +32,7 @@ export async function runForgeScript(
     skipSimulation = true,
     verbosity = 3,
     env = {},
+    profile,
   } = options;
 
   // Clean up any previous broadcast for this script to avoid resume errors
@@ -47,6 +49,7 @@ export async function runForgeScript(
     broadcast ? '--broadcast' : '',
     privateKey ? `--private-key ${privateKey}` : '',
     skipSimulation ? '--skip-simulation' : '',
+    profile ? `--profile ${profile}` : '',
     `-${'v'.repeat(verbosity)}`,
   ].filter(Boolean).join(' ');
 
@@ -273,6 +276,7 @@ export function printDeploymentSummary(): void {
   logger.info(indent('Step 6: Uniswap Router initialized (token approvals)'));
   logger.info(indent('Step 7: Addresses exported to JSON'));
   logger.info(indent('Step 8: Configuration files generated'));
+  logger.info(indent('Step 12: EthFlow deployed (Native ETH swap support)'));
 }
 
 /**
