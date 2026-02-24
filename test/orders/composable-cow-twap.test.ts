@@ -240,8 +240,8 @@ describe("ComposableCow TWAP Orders", () => {
         minPartLimit: minPartLimit.toString(),
         t0: currentTime + 60,
         n: 3,
-        t: 90,
-        span: 90,
+        t: 180,
+        span: 180, 
         appData: ethers.ZeroHash,
       };
 

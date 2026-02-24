@@ -358,6 +358,21 @@ export async function revertToGlobalSnapshot(resetWatchTower: boolean = true): P
     const block = await provider.getBlock("latest");
     console.log(`✅ Blockchain reverted to block: ${block?.number}`);
 
+    // Step 1.5: CRITICAL - Synchronize blockchain time to current system time
+    // When reverting to snapshot, blockchain time goes back but system time keeps advancing
+    // This causes orders to appear expired when watch-tower uses blockchain time but orderbook uses system time
+    console.log("⏰ Synchronizing blockchain time to current system time...");
+    const currentSystemTime = Math.floor(Date.now() / 1000);
+
+    // Set next block timestamp to current system time
+    await provider.send("evm_setNextBlockTimestamp", [currentSystemTime]);
+
+    // Mine a block to apply the new timestamp
+    await provider.send("evm_mine", []);
+
+    const newBlock = await provider.getBlock("latest");
+    console.log(`✅ Blockchain time synchronized to: ${new Date(currentSystemTime * 1000).toISOString()} at block ${newBlock?.number}`);
+
     // Step 2: NOW reset watch-tower AFTER blockchain reverts
     // Watch-tower will warm up from snapshot block, not from future blocks
     // Only do this if test needs watch-tower (TWAP, stop-loss, etc.)
@@ -385,13 +400,13 @@ export async function revertToGlobalSnapshot(resetWatchTower: boolean = true): P
       console.log('⏭️  Skipping watch-tower reset (not needed for this test)');
     }
 
-    // Step 3: CRITICAL - Retake snapshot immediately after revert
+    // Step 2: CRITICAL - Retake snapshot immediately after revert and time sync
     // Anvil consumes snapshots when reverting, so we must retake it for the next test
     const newSnapshotId = await takeSnapshot(provider);
     fs.writeFileSync(SNAPSHOT_FILE, newSnapshotId, "utf8");
     console.log(`📸 Snapshot retaken for next test (new ID: ${newSnapshotId})`);
 
-    // Step 4: Stop all services that depend on database in correct order
+    // Step 3: Stop all services that depend on database in correct order
     // Must stop dependents before stopping database
     console.log('🛑 Stopping services in dependency order...');
 
@@ -444,14 +459,14 @@ export async function revertToGlobalSnapshot(resetWatchTower: boolean = true): P
       timeout: 10000
     });
 
-    // Step 5: Wipe database volume completely
+    // Step 4: Wipe database volume completely
     console.log('🗑️  Wiping database volume for clean state...');
     execSync('docker volume rm offline-mode_postgres', {
       stdio: 'pipe',
       timeout: 10000
     });
 
-    // Step 6: Start database with fresh volume
+    // Step 5: Start database with fresh volume
     console.log('🔄 Starting database with fresh volume...');
     execSync('docker compose up -d db', {
       stdio: 'pipe',
@@ -473,20 +488,20 @@ export async function revertToGlobalSnapshot(resetWatchTower: boolean = true): P
       }
     }
 
-    // Step 7: Start adminer (database admin tool)
+    // Step 6: Start adminer (database admin tool)
     execSync('docker compose up -d adminer', {
       stdio: 'pipe',
       timeout: 30000
     });
 
-    // Step 8: Start orderbook (runs migrations on fresh database)
+    // Step 7: Start orderbook (runs migrations on fresh database)
     console.log('🔄 Starting orderbook to run database migrations...');
     execSync('docker compose up -d orderbook', {
       stdio: 'pipe',
       timeout: 30000
     });
 
-    // Step 9: Wait for orderbook to be ready and migrations to complete
+    // Step 8: Wait for orderbook to be ready and migrations to complete
     console.log('⏳ Waiting for orderbook to be ready...');
     await waitForOrderbookReady();
 
@@ -508,7 +523,7 @@ export async function revertToGlobalSnapshot(resetWatchTower: boolean = true): P
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    // Step 10: Start remaining services that depend on orderbook/db
+    // Step 9: Start remaining services that depend on orderbook/db
     console.log('🔄 Starting driver and baseline...');
     execSync('docker compose up -d driver baseline', {
       stdio: 'pipe',
@@ -523,7 +538,7 @@ export async function revertToGlobalSnapshot(resetWatchTower: boolean = true): P
     console.log('⏳ Waiting for baseline to index liquidity...');
     await waitForBaselineReady();
 
-    // Step 11: NOW restart autopilot so it reads the clean database state
+    // Step 10: NOW restart autopilot so it reads the clean database state
     // CRITICAL: Must do full stop+remove+start cycle (not just restart)
     // autopilot has internal state that survives restart, causing it to ignore DB reset
     console.log('🔄 Restarting autopilot with fresh state...');
@@ -578,7 +593,7 @@ export async function revertToGlobalSnapshot(resetWatchTower: boolean = true): P
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    // Step 12: Wait for autopilot to sync up to current block
+    // Step 11: Wait for autopilot to sync up to current block
     // After database reset and restart, autopilot will index from snapshot block to current block
     // This prevents race conditions where tests submit orders before autopilot has indexed approvals
     const currentBlock = await provider.getBlock("latest");
