@@ -226,8 +226,7 @@ describe("ComposableCow TWAP Orders", () => {
       const numParts = 3n;
       const partSellAmount = totalSellAmount / numParts;
 
-      // Set minimum price below market to ensure solver profit (~13% surplus)
-      const minWethPerUsdc = 0.00027; // Below market rate (same as working script)
+      const minWethPerUsdc = 0.00027;
       const partUsdcAmount = Number(ethers.formatUnits(partSellAmount, 6));
       const minPartLimit = ethers.parseEther(
         (partUsdcAmount * minWethPerUsdc).toFixed(18),
@@ -239,10 +238,10 @@ describe("ComposableCow TWAP Orders", () => {
         receiver: safeWallet,
         partSellAmount: partSellAmount.toString(),
         minPartLimit: minPartLimit.toString(),
-        t0: currentTime + 60, // Start 120 seconds from now - gives watch-tower time to catch up after snapshot reset
+        t0: currentTime + 60,
         n: 3,
-        t: 90, // Time between parts: 90 seconds
-        span: 90, // Each part valid for 90 seconds - must be <= t
+        t: 90,
+        span: 90,
         appData: ethers.ZeroHash,
       };
 

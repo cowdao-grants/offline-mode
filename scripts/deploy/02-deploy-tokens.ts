@@ -92,10 +92,10 @@ export async function deployTokens(config: DeploymentConfig): Promise<TokenAddre
     config.deployerPrivateKey
   );
 
-  // Read broadcast result to get TestERC20 bytecode
+  // Read broadcast result to get TestERC20 and TestERC20WithPermit bytecode
   const broadcast = readBroadcastResult('DeployTokens');
   const testERC20Transactions = broadcast.transactions.filter(
-    tx => tx.contractName === 'TestERC20' && tx.transactionType === 'CREATE2'
+    tx => (tx.contractName === 'TestERC20' || tx.contractName === 'TestERC20WithPermit') && tx.transactionType === 'CREATE2'
   );
 
   // Get the bytecode from the first deployed TestERC20
@@ -106,14 +106,61 @@ export async function deployTokens(config: DeploymentConfig): Promise<TokenAddre
     { encoding: 'utf8' }
   ).trim();
 
-  // Now deploy the TestERC20 bytecode at mainnet addresses for other tokens
-  logger.debug('Deploying other tokens at mainnet addresses');
+  // Get TestERC20WithPermit bytecode from deployed contracts
+  // The Forge script deploys DAI and USDC with permit support
+  logger.debug('Using TestERC20WithPermit bytecode from deployment');
+
+  // testERC20Transactions now contains both TestERC20WithPermit contracts
+  // USDC is at index 0, DAI is at index 1
+  logger.trace(`Fetching USDC bytecode from temporary deployment at ${testERC20Transactions[0]?.contractAddress}`);
+  const usdcBytecode = execSync(
+    `cast code ${testERC20Transactions[0]?.contractAddress} --rpc-url ${config.rpcUrl}`,
+    { encoding: 'utf8' }
+  ).trim();
+
+  logger.trace(`Fetching DAI bytecode from temporary deployment at ${testERC20Transactions[1]?.contractAddress}`);
+  const daiBytecode = execSync(
+    `cast code ${testERC20Transactions[1]?.contractAddress} --rpc-url ${config.rpcUrl}`,
+    { encoding: 'utf8' }
+  ).trim();
+
+  // Now deploy tokens at mainnet addresses
+  logger.debug('Deploying tokens with permit support at mainnet addresses');
 
   logger.debug(indent(`Setting USDC bytecode at ${USDC}`));
-  execSync(`cast rpc anvil_setCode ${USDC} ${testERC20Bytecode} --rpc-url ${config.rpcUrl}`, { stdio: 'inherit' });
+  execSync(`cast rpc anvil_setCode ${USDC} ${usdcBytecode} --rpc-url ${config.rpcUrl}`, { stdio: 'inherit' });
+
+  // Copy storage slots for USDC (name, symbol, decimals from temporary deployment)
+  logger.debug(indent(`Copying USDC storage from temporary deployment`));
+  for (let slot = 0; slot < 6; slot++) {
+    const slotHex = `0x${slot.toString(16).padStart(64, '0')}`;
+    const storageValue = execSync(
+      `cast storage ${tempUsdcAddress} ${slotHex} --rpc-url ${config.rpcUrl}`,
+      { encoding: 'utf8' }
+    ).trim();
+    execSync(
+      `cast rpc anvil_setStorageAt ${USDC} ${slotHex} ${storageValue} --rpc-url ${config.rpcUrl}`,
+      { stdio: 'inherit' }
+    );
+  }
 
   logger.debug(indent(`Setting DAI bytecode at ${DAI}`));
-  execSync(`cast rpc anvil_setCode ${DAI} ${testERC20Bytecode} --rpc-url ${config.rpcUrl}`, { stdio: 'inherit' });
+  execSync(`cast rpc anvil_setCode ${DAI} ${daiBytecode} --rpc-url ${config.rpcUrl}`, { stdio: 'inherit' });
+
+  // Copy storage slots for DAI (name, symbol, decimals from temporary deployment)
+  logger.debug(indent(`Copying DAI storage from temporary deployment`));
+  const tempDaiAddress = testERC20Transactions[1].contractAddress;
+  for (let slot = 0; slot < 6; slot++) {
+    const slotHex = `0x${slot.toString(16).padStart(64, '0')}`;
+    const storageValue = execSync(
+      `cast storage ${tempDaiAddress} ${slotHex} --rpc-url ${config.rpcUrl}`,
+      { encoding: 'utf8' }
+    ).trim();
+    execSync(
+      `cast rpc anvil_setStorageAt ${DAI} ${slotHex} ${storageValue} --rpc-url ${config.rpcUrl}`,
+      { stdio: 'inherit' }
+    );
+  }
 
   logger.debug(indent(`Setting USDT bytecode at ${USDT}`));
   execSync(`cast rpc anvil_setCode ${USDT} ${testERC20Bytecode} --rpc-url ${config.rpcUrl}`, { stdio: 'inherit' });
