@@ -3,17 +3,17 @@ pragma solidity ^0.8.26;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
-/// @title TestERC20WithPermit
-/// @notice ERC20 token with DAI-style permit for testing
+/// @title TestDAI
+/// @notice DAI token with DAI-style permit for testing
 /// @dev Extends Solmate's ERC20 which already has EIP-2612 permit
 /// @dev Adds DAI's custom permit with bool allowed parameter
-contract TestERC20WithPermit is ERC20 {
+contract TestDAI is ERC20 {
     // keccak256("Permit(address holder,address spender,uint256 nonce,uint256 expiry,bool allowed)")
     bytes32 public constant PERMIT_TYPEHASH_DAI = 0xea2aa0a1be11a07ed86d755c93467f4f82362b452371d1ba94d1715123511acb;
 
     /// @notice Returns the permit version for EIP-2612 compatibility
     /// @dev Must match the version used in Solmate's computeDomainSeparator (hardcoded as "1")
-    function version() external pure returns (string memory) {
+    function version() external pure virtual returns (string memory) {
         return "1";
     }
 

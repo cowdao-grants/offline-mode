@@ -10,7 +10,8 @@ export default async function globalTeardown() {
   console.log('\n🧹 Cleaning up after tests...\n');
 
   try {
-    const provider = new ethers.JsonRpcProvider('http://localhost:8545');
+    const PORT_CHAIN = process.env.PORT_CHAIN || '8545';
+    const provider = new ethers.JsonRpcProvider(`http://localhost:${PORT_CHAIN}`);
 
     // Import revert function
     const { revertToGlobalSnapshot } = await import('../utils/shared-snapshot');

@@ -12,8 +12,10 @@ import * as fs from "fs";
 import * as path from "path";
 import { execSync } from "child_process";
 
-const RPC_URL = process.env.RPC_URL || "http://localhost:8545";
-const ORDERBOOK_URL = process.env.ORDERBOOK_URL || "http://localhost:8080";
+const PORT_CHAIN = process.env.PORT_CHAIN || "8545";
+const PORT_ORDERBOOK = process.env.PORT_ORDERBOOK || "8080";
+const RPC_URL = `http://localhost:${PORT_CHAIN}`;
+const ORDERBOOK_URL = `http://localhost:${PORT_ORDERBOOK}`;
 const DRIVER_PORT = process.env.PORT_DRIVER || "9000";
 const SNAPSHOT_FILE = path.join(__dirname, "../../.snapshot-id.tmp");
 const SNAPSHOT_BLOCK_FILE = path.join(__dirname, "../../.snapshot-block.tmp");

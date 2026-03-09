@@ -20,8 +20,8 @@ function loadAddresses() {
 
 // Configuration
 export const CONFIG = {
-  rpcUrl: process.env.RPC_URL || 'http://localhost:8545',
-  orderbookUrl: process.env.ORDERBOOK_URL || 'http://localhost:8080',
+  rpcUrl: `http://localhost:${process.env.PORT_CHAIN || '8545'}`,
+  orderbookUrl: `http://localhost:${process.env.PORT_ORDERBOOK || '8080'}`,
   chainId: 1,
 };
 

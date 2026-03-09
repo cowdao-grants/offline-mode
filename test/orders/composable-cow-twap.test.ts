@@ -48,8 +48,8 @@ async function waitForAutopilotSync(expectedBlock: number): Promise<void> {
 
 // Configuration
 const CONFIG = {
-  rpcUrl: process.env.RPC_URL || "http://localhost:8545",
-  orderbookUrl: process.env.ORDERBOOK_URL || "http://localhost:8080",
+  rpcUrl: `http://localhost:${process.env.PORT_CHAIN || "8545"}`,
+  orderbookUrl: `http://localhost:${process.env.PORT_ORDERBOOK || "8080"}`,
   chainId: 1,
 };
 const timeoutMs = 600000; // 10 minutes timeout (TWAP needs time for all 3 parts to start and settle)

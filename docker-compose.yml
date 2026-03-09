@@ -307,14 +307,15 @@ services:
       dockerfile: Dockerfile.cowswap
       args:
         - CHAIN=1
-        - ETH_RPC_URL=http://localhost:8545
+        - ETH_RPC_URL=http://localhost:${PORT_CHAIN:-8545}
+        - REACT_APP_API_URL=http://127.0.0.1:${PORT_ORDERBOOK:-8080}
     env_file: .env
     environment:
       - REACT_APP_NETWORK_ID=1
       - REACT_APP_NETWORK_NAME=Anvil Offline
-      - REACT_APP_NETWORK_URL=http://localhost:8545
-      - REACT_APP_NETWORK_URL_PRODUCTION=http://localhost:8545
-      - REACT_APP_API_URL=http://127.0.0.1:8080
+      - REACT_APP_NETWORK_URL=http://localhost:${PORT_CHAIN:-8545}
+      - REACT_APP_NETWORK_URL_PRODUCTION=http://localhost:${PORT_CHAIN:-8545}
+      - REACT_APP_API_URL=http://127.0.0.1:${PORT_ORDERBOOK:-8080}
     ports:
       - ${PORT_FRONTEND:-8000}:80
 

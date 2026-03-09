@@ -65,7 +65,8 @@ async function cleanDatabase() {
         while (!liquidityReady && liquidityAttempts < maxLiquidityAttempts) {
           try {
             // Test quote with a common pair (DAI -> WETH)
-            const testQuoteResponse = await fetch('http://localhost:8080/api/v1/quote', {
+            const PORT_ORDERBOOK = process.env.PORT_ORDERBOOK || '8080';
+            const testQuoteResponse = await fetch(`http://localhost:${PORT_ORDERBOOK}/api/v1/quote`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -112,14 +113,20 @@ export default async function globalSetup() {
   // Load environment variables from .env file
   dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
+  // Construct URLs from PORT_* environment variables
+  const PORT_CHAIN = process.env.PORT_CHAIN || '8545';
+  const PORT_ORDERBOOK = process.env.PORT_ORDERBOOK || '8080';
+  const RPC_URL = `http://localhost:${PORT_CHAIN}`;
+  const ORDERBOOK_URL = `http://localhost:${PORT_ORDERBOOK}`;
+
   // Clean database before running tests to prevent old orders from interfering
   await cleanDatabase();
 
   console.log('\n🔍 Checking if services are running...\n');
 
   const requiredServices = [
-    { name: 'Anvil Chain', url: 'http://localhost:8545', method: 'POST', body: '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' },
-    { name: 'Orderbook API', url: 'http://localhost:8080/api/v1/version', method: 'GET' },
+    { name: 'Anvil Chain', url: RPC_URL, method: 'POST', body: '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' },
+    { name: 'Orderbook API', url: `${ORDERBOOK_URL}/api/v1/version`, method: 'GET' },
   ];
 
   for (const service of requiredServices) {
@@ -170,7 +177,7 @@ export default async function globalSetup() {
       // Call setPrice on each oracle to refresh timestamp
       const { execSync } = require('child_process');
       execSync(
-        `cast send ${oracle.address} "setPrice(int256)" ${oracle.price} --private-key ${deployerKey} --rpc-url http://localhost:8545 2>/dev/null`,
+        `cast send ${oracle.address} "setPrice(int256)" ${oracle.price} --private-key ${deployerKey} --rpc-url ${RPC_URL} 2>/dev/null`,
         { stdio: 'pipe' }
       );
       console.log(`✅ ${oracle.name} oracle timestamp refreshed`);
@@ -198,7 +205,7 @@ export default async function globalSetup() {
     }
 
     const { ethers } = await import('ethers');
-    const provider = new ethers.JsonRpcProvider('http://localhost:8545');
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
 
     // Import and initialize the global snapshot
     const { initializeGlobalSnapshot } = await import('../utils/shared-snapshot');

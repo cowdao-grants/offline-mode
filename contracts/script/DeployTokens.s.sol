@@ -4,7 +4,8 @@ pragma solidity ^0.8.26;
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 import {TestERC20} from "../src/tokens/TestERC20.sol";
-import {TestERC20WithPermit} from "../src/tokens/TestERC20WithPermit.sol";
+import {TestDAI} from "../src/tokens/TestDAI.sol";
+import {TestUSDC} from "../src/tokens/TestUSDC.sol";
 import {DeploymentUtils} from "./Utils.sol";
 
 /// @title DeployTokens
@@ -42,10 +43,11 @@ contract DeployTokens is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // Deploy USDC (6 decimals) with CREATE2 and permit support
+        // Deploy USDC (6 decimals) with CREATE2 and EIP-2612 permit support
+        // NOTE: USDC uses version "2" and ONLY EIP-2612 permit (no DAI-style permit)
         console.log("");
-        console.log("Deploying USDC with CREATE2 and permit support...");
-        TestERC20WithPermit usdc = new TestERC20WithPermit{salt: USDC_SALT}(
+        console.log("Deploying USDC with CREATE2 and EIP-2612 permit (version 2)...");
+        TestUSDC usdc = new TestUSDC{salt: USDC_SALT}(
             "USD Coin",
             "USDC",
             6,
@@ -58,7 +60,7 @@ contract DeployTokens is Script {
         // Deploy DAI (18 decimals) with CREATE2 and permit support
         console.log("");
         console.log("Deploying DAI with CREATE2 and permit support...");
-        TestERC20WithPermit dai = new TestERC20WithPermit{salt: DAI_SALT}(
+        TestDAI dai = new TestDAI{salt: DAI_SALT}(
             "Dai Stablecoin",
             "DAI",
             18,

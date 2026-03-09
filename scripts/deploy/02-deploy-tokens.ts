@@ -92,10 +92,10 @@ export async function deployTokens(config: DeploymentConfig): Promise<TokenAddre
     config.deployerPrivateKey
   );
 
-  // Read broadcast result to get TestERC20 and TestERC20WithPermit bytecode
+  // Read broadcast result to get TestERC20, TestDAI, and TestUSDC bytecode
   const broadcast = readBroadcastResult('DeployTokens');
   const testERC20Transactions = broadcast.transactions.filter(
-    tx => (tx.contractName === 'TestERC20' || tx.contractName === 'TestERC20WithPermit') && tx.transactionType === 'CREATE2'
+    tx => (tx.contractName === 'TestERC20' || tx.contractName === 'TestDAI' || tx.contractName === 'TestUSDC') && tx.transactionType === 'CREATE2'
   );
 
   // Get the bytecode from the first deployed TestERC20
@@ -106,13 +106,15 @@ export async function deployTokens(config: DeploymentConfig): Promise<TokenAddre
     { encoding: 'utf8' }
   ).trim();
 
-  // Get TestERC20WithPermit bytecode from deployed contracts
-  // The Forge script deploys DAI and USDC with permit support
-  logger.debug('Using TestERC20WithPermit bytecode from deployment');
+  // Get TestDAI and TestUSDC bytecode from deployed contracts
+  // The Forge script deploys:
+  // - USDC with TestUSDC (version "2", EIP-2612 only - matches mainnet)
+  // - DAI with TestDAI (version "1", supports both EIP-2612 and DAI-style permit)
+  logger.debug('Using TestUSDC and TestDAI bytecode from deployment');
 
-  // testERC20Transactions now contains both TestERC20WithPermit contracts
+  // testERC20Transactions now contains TestUSDC (USDC) and TestDAI (DAI)
   // USDC is at index 0, DAI is at index 1
-  logger.trace(`Fetching USDC bytecode from temporary deployment at ${testERC20Transactions[0]?.contractAddress}`);
+  logger.trace(`Fetching USDC bytecode (TestUSDC) from temporary deployment at ${testERC20Transactions[0]?.contractAddress}`);
   const usdcBytecode = execSync(
     `cast code ${testERC20Transactions[0]?.contractAddress} --rpc-url ${config.rpcUrl}`,
     { encoding: 'utf8' }
