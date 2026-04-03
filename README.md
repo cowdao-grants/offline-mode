@@ -40,7 +40,8 @@ All services work out-of-the-box with proper configuration pointing to the local
 
 ### Prerequisites
 
-- Docker and Docker Compose
+- Docker 23+ and Docker Compose (BuildKit enabled by default)
+  - For older Docker versions, set `DOCKER_BUILDKIT=1` before running builds
 - Git
 - Node.js 18+ and npm
 - **Foundry** (required for running tests)
@@ -93,10 +94,8 @@ For more details, see [Foundry Book](https://book.getfoundry.sh/getting-started/
 
 3. **Install Node.js dependencies**:
    ```bash
-   npm install --legacy-peer-deps
+   npm install
    ```
-
-   The `--legacy-peer-deps` flag is required to resolve dependency conflicts in the project.
 
 ### Initialize the Environment
 
