@@ -1,0 +1,14 @@
+{
+  "networks": [
+    {
+      "name": "mainnet",
+      "rpc": "http://chain:8545",
+      "deploymentBlock": 12593380,
+      "watchdogTimeout": 604800,
+      "orderBookApi": "http://orderbook:80",
+      "filterPolicy": {
+        "defaultAction": "ACCEPT"
+      }
+    }
+  ]
+}

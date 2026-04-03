@@ -1,0 +1,385 @@
+services:
+  # Chain Deployer - Prepares blockchain state if not exists
+  chain-deployer:
+    image: ghcr.io/foundry-rs/foundry:nightly-1c57854462289b2e71ee7654cd6666217ed86ffd
+    user: root
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        set -e  # Exit on any error
+        # Run the chain deployer script (it handles Node.js installation if needed)
+        /workspace/scripts/chain-deployer.sh
+        # Keep container running so it remains healthy
+        tail -f /dev/null
+    working_dir: /workspace
+    env_file:
+      - .env
+    environment:
+      - ANVIL_IP_ADDR=0.0.0.0
+      - DOCKER_ENV=true
+    volumes:
+      - .:/workspace
+      - ./state:/state
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /tmp/deployment-complete ]"]
+      interval: 5s
+      timeout: 5s
+      retries: 120
+      start_period: 10s
+
+  # Anvil node with pre-deployed contracts (offline mode)
+  chain:
+    image: ghcr.io/foundry-rs/foundry:nightly-1c57854462289b2e71ee7654cd6666217ed86ffd
+    restart: always
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        if [ -f /state/anvil-state.json ]; then
+          echo "📂 Loading existing blockchain state..."
+          # Start Anvil with slow block-time to reduce drift
+          # Tests will mine blocks manually when needed
+          anvil --load-state /state/anvil-state.json --host 0.0.0.0 --port 8545 --chain-id 1 --block-time 2 --gas-limit 30000000 --code-size-limit 50000 &
+          ANVIL_PID=$$!
+
+          # Wait for Anvil to be ready
+          sleep 3
+
+          # Reset blockchain timestamp to current time
+          CURRENT_TS=$$(date +%s)
+          echo "⏰ Resetting blockchain timestamp to current time: $$CURRENT_TS"
+          cast rpc evm_setNextBlockTimestamp $$CURRENT_TS --rpc-url http://127.0.0.1:8545 > /dev/null 2>&1 || true
+          cast rpc evm_mine --rpc-url http://127.0.0.1:8545 > /dev/null 2>&1 || true
+
+          echo "✅ Blockchain timestamp synchronized with system time"
+
+          # Keep Anvil running in foreground
+          wait $$ANVIL_PID
+        else
+          echo "Error: No state file found at /state/anvil-state.json. Deployment should have created it."
+          exit 1
+        fi
+    environment:
+      - ANVIL_IP_ADDR=0.0.0.0
+    volumes:
+      - ./state:/state
+    ports:
+      - ${PORT_CHAIN:-8545}:8545
+    depends_on:
+      chain-deployer:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "cast rpc eth_blockNumber --rpc-url http://127.0.0.1:8545 > /dev/null",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 2s
+
+  # Mock Coingecko API for price fetching in offline mode
+  coingecko-mock:
+    build: ./mocks/coingecko
+    restart: always
+    env_file: .env
+    environment:
+      - PORT=3000
+      - ETH_RPC_URL=http://chain:8545
+    depends_on:
+      chain:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", "wget -q --spider http://localhost:3000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  db:
+    image: postgres:16
+    restart: always
+    env_file: .env
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    command: -d postgres
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    ports:
+      - ${PORT_DB:-5432}:5432
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - ${PORT_ADMINER:-8082}:8080
+    depends_on:
+      - db
+
+  db-migrations:
+    build:
+      context: ./modules/services
+      target: migrations
+      dockerfile: ../../Dockerfile
+    restart: on-failure
+    env_file: .env
+    environment:
+      - FLYWAY_URL=jdbc:postgresql://db/?user=${POSTGRES_USER}&password=${POSTGRES_PASSWORD}
+    depends_on:
+      - db
+
+  orderbook:
+    build:
+      context: ./modules/services
+      target: orderbook
+      dockerfile: ../../Dockerfile
+    restart: always
+    cap_add:
+      - SYS_TIME  # Allow container to change its own system time
+    env_file:
+      - .env
+    environment:
+      - NODE_URL=http://chain:8545
+      - DB_WRITE_URL=postgres://db:5432/?user=${POSTGRES_USER}&password=${POSTGRES_PASSWORD}
+      - DB_READ_URL=postgres://db:5432/?user=${POSTGRES_USER}&password=${POSTGRES_PASSWORD}
+      - SIMULATION_NODE_URL=http://chain:8545
+      - EIP1271_SKIP_CREATION_VALIDATION=true
+      - ENABLE_EIP1271_ORDERS=true
+      - PRICE_ESTIMATORS=None
+      - PRICE_ESTIMATION_DRIVERS=baseline|http://driver/baseline
+      - NATIVE_PRICE_ESTIMATORS=baseline|http://driver/baseline
+      - DRIVERS=baseline|http://driver/baseline
+      - BIND_ADDRESS=0.0.0.0:80
+      - BASELINE_SOURCES=UniswapV2
+      - TOKEN_OWNER_FINDERS=liquidity
+      - RUST_BACKTRACE=1
+      - TOML_TRACE_ERROR=1
+      - TRACING_COLLECTOR_ENDPOINT=http://tempo:4317
+      - TOKIO_CONSOLE=true
+      - TOKIO_CONSOLE_RETENTION=600sec
+      - TOKIO_CONSOLE_BIND=0.0.0.0:6669
+      - LOG_FILTER=orderbook=debug,shared=trace,shared::price_estimation=trace,shared::price_estimation::native=trace
+      - COIN_GECKO_URL=http://coingecko-mock:3000/api/v3/simple/token_price
+      - AMOUNT_TO_ESTIMATE_PRICES_WITH=100000000000000000
+      - SKIP_TRACE_API=true
+      - SETTLE_INTERVAL=2s          # Optimized: Autopilot runs auctions every 2s instead of 15s
+      - GAS_ESTIMATORS=Native,Web3
+      - BLOCK_STREAM_POLL_INTERVAL=1s
+      - NATIVE_PRICE_CACHE_MAX_UPDATE_SIZE=100
+      - NATIVE_PRICE_CACHE_MAX_AGE=20m
+      - SOLVER_TIME_LIMIT=5         # Solver needs 5s to reliably find solutions
+      - RUN_LOOP_NATIVE_PRICE_TIMEOUT=5s
+      - NATIVE_PRICE_ESTIMATION_RESULTS_REQUIRED=1
+      - DISABLE_ORDER_FILTERING=true
+      - SKIP_EVENT_SYNC=false
+      - HOOKS_CONTRACT_ADDRESS=0x60Bf78233f48eC42eE3F101b9a05eC7878728006
+      - BASE_TOKENS=${BASE_TOKENS}
+    depends_on:
+      - db-migrations
+      - chain
+      - coingecko-mock
+    ports:
+      - ${PORT_ORDERBOOK:-8080}:80 # API
+      - ${PORT_ORDERBOOK_METRICS:-9586}:9586 # metrics
+      - ${PORT_ORDERBOOK_TOKIO:-6669}:6669 # tokio console
+    healthcheck:
+      test:
+        ["CMD-SHELL", "wget -q -O- http://localhost:80/api/v1/version || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
+  autopilot:
+    build:
+      context: ./modules/services
+      target: autopilot
+      dockerfile: ../../Dockerfile
+    restart: always
+    cap_add:
+      - SYS_TIME  # Allow container to change its own system time
+    env_file:
+      - .env
+      - .env.services
+    environment:
+      - DB_WRITE_URL=postgres://db:5432/?user=${POSTGRES_USER}&password=${POSTGRES_PASSWORD}
+      - DB_READ_URL=postgres://db:5432/?user=${POSTGRES_USER}&password=${POSTGRES_PASSWORD}
+      - LOG_FILTER=info,autopilot=trace,shared=debug,shared::price_estimation=trace,autopilot::solvable_orders=trace,autopilot::run=trace
+      - DRIVERS=baseline|http://driver/baseline|0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+      - OFFLINE_MODE=true
+    ports:
+      - ${PORT_AUTOPILOT_METRICS:-9589}:9589 # metrics
+      - ${PORT_AUTOPILOT_TOKIO:-6670}:6669 # tokio console
+    depends_on:
+      chain-deployer:
+        condition: service_healthy
+      orderbook:
+        condition: service_healthy
+      chain:
+        condition: service_healthy
+      coingecko-mock:
+        condition: service_healthy
+
+  # Watch-tower service for ComposableCow conditional orders
+  watch-tower:
+    build:
+      context: ./modules/watch-tower
+      dockerfile: Dockerfile
+    restart: always
+    cap_add:
+      - SYS_TIME  # Allow container to change its own system time
+    command: ["run", "--config-path", "/config.json"]
+    volumes:
+      - ./config/watch-tower-config.json:/config.json
+    depends_on:
+      chain-deployer:
+        condition: service_healthy
+      orderbook:
+        condition: service_healthy
+      chain:
+        condition: service_healthy
+    environment:
+      - RUST_LOG=info,watch_tower=debug
+      - LOG_LEVEL=DEBUG
+      - ORDERBOOK_API_URL=http://orderbook:80
+
+  driver:
+    build:
+      context: ./modules/services
+      target: driver
+      dockerfile: ../../Dockerfile
+    restart: always
+    cap_add:
+      - SYS_TIME  # Allow container to change its own system time
+    command: ["--config", "/workspace/config/offline/driver.toml"]
+    env_file:
+      - .env
+      - .env.services
+    environment:
+      - ETHRPC=http://chain:8545
+      - ADDR=0.0.0.0:80
+      - RUST_LOG=driver=debug,shared=trace
+      - HOOKS_CONTRACT_ADDRESS=0x60Bf78233f48eC42eE3F101b9a05eC7878728006
+    volumes:
+      - ./config:/workspace/config
+    ports:
+      - ${PORT_DRIVER:-9000}:80 # API & metrics
+      - ${PORT_DRIVER_TOKIO:-6671}:6669 # tokio console
+    depends_on:
+      chain-deployer:
+        condition: service_healthy
+      chain:
+        condition: service_healthy
+
+  # baseline (solver engine)
+  baseline:
+    build:
+      context: ./modules/services
+      target: solvers
+      dockerfile: ../../Dockerfile
+    restart: always
+    command: ["baseline", "--config", "/workspace/config/offline/baseline.toml"]
+    env_file:
+      - .env
+      - .env.services
+    environment:
+      - ADDR=0.0.0.0:80
+      - LOG=solvers=trace,shared=trace
+    volumes:
+      - ./config:/workspace/config
+    ports:
+      - ${PORT_BASELINE:-9001}:80 # API & metrics
+      - ${PORT_BASELINE_TOKIO:-6672}:6669 # tokio console
+    depends_on:
+      chain-deployer:
+        condition: service_healthy
+      chain:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.cowswap
+      args:
+        - CHAIN=1
+        - ETH_RPC_URL=http://localhost:${PORT_CHAIN:-8545}
+        - REACT_APP_API_URL=http://127.0.0.1:${PORT_ORDERBOOK:-8080}
+    env_file: .env
+    environment:
+      - REACT_APP_NETWORK_ID=1
+      - REACT_APP_NETWORK_NAME=Anvil Offline
+      - REACT_APP_NETWORK_URL=http://localhost:${PORT_CHAIN:-8545}
+      - REACT_APP_NETWORK_URL_PRODUCTION=http://localhost:${PORT_CHAIN:-8545}
+      - REACT_APP_API_URL=http://127.0.0.1:${PORT_ORDERBOOK:-8080}
+    ports:
+      - ${PORT_FRONTEND:-8000}:80
+
+  explorer:
+    build:
+      context: .
+      dockerfile: Dockerfile.explorer
+      args:
+        - CHAIN=1
+        - ETH_RPC_URL=http://chain:8545
+    environment:
+      - REACT_APP_NETWORK_ID=1
+      - REACT_APP_NETWORK_NAME=Anvil Offline
+      - REACT_APP_NETWORK_URL=http://chain:8545
+    ports:
+      - ${PORT_EXPLORER:-8001}:80
+
+  tempo:
+    image: grafana/tempo:latest
+    ports:
+      - ${PORT_TEMPO:-4317}:4317 # OTLP gRPC
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./tempo.yaml:/etc/tempo.yaml
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - ${PORT_GRAFANA:-3000}:3000
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    volumes:
+      - ./grafana-prometheus.yml:/etc/grafana/provisioning/datasources/prometheus.yml
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: always
+    ports:
+      - ${PORT_PROMETHEUS:-9090}:9090
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+  block-miner:
+    image: ghcr.io/foundry-rs/foundry:nightly-1c57854462289b2e71ee7654cd6666217ed86ffd
+    restart: always
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo "⛏️  Block miner starting..."
+        echo "   Mining blocks every 2 seconds to keep autopilot running"
+        echo "   while minimizing blockchain time drift"
+        sleep 5  # Wait for chain to be ready
+        while true; do
+          cast rpc anvil_mine 1 --rpc-url http://chain:8545 > /dev/null 2>&1 || true
+          sleep 2
+        done
+    depends_on:
+      chain:
+        condition: service_healthy
+    profiles:
+      - block-mining  # Only start when explicitly requested
+
+volumes:
+  postgres:

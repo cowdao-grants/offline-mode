@@ -1,0 +1,56 @@
+{
+  "name": "cow-protocol-offline-mode",
+  "version": "1.0.0",
+  "description": "CoW Protocol offline development environment with deployed contracts",
+  "scripts": {
+    "start-anvil:fresh": "rm -rf state/anvil-state.json & ./scripts/start-anvil.sh",
+    "deploy:all": "./scripts/deploy-all.sh",
+    "deploy:ts": "npx ts-node scripts/deploy-all.ts",
+    "deploy:debug": "LOG_LEVEL=debug npx ts-node scripts/deploy-all.ts",
+    "deploy:trace": "LOG_LEVEL=trace npx ts-node scripts/deploy-all.ts",
+    "build": "forge build",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "set-ports": "npx ts-node scripts/set-ports.ts",
+    "order:playground": "npx ts-node scripts/orders/playground-order.ts",
+    "order:cowshed": "npx ts-node scripts/orders/cowshed-order.ts",
+    "order:composable-cow:twap": "npx ts-node scripts/orders/composable-cow/twap.ts",
+    "order:composable-cow:stop-loss": "npx ts-node scripts/orders/composable-cow/stop-loss.ts",
+    "order:composable-cow:good-after-time": "npx ts-node scripts/orders/composable-cow/good-after-time.ts"
+  },
+  "dependencies": {
+    "@cowprotocol/contracts": "^1.6.0",
+    "@cowprotocol/sdk-cow-shed": "^0.2.3",
+    "@openzeppelin/contracts": "^5.0.2",
+    "@openzeppelin/contracts-old": "npm:@openzeppelin/contracts@^3.4.0",
+    "@uniswap/lib": "^4.0.1-alpha",
+    "@uniswap/v2-core": "^1.0.1",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0",
+    "cow-shed": "github:cowdao-grants/cow-shed",
+    "dotenv": "^17.2.3",
+    "forge-std": "github:foundry-rs/forge-std",
+    "pino": "^8.17.2",
+    "pino-pretty": "^10.3.1",
+    "solady": "github:Vectorized/solady",
+    "solmate": "github:transmissions11/solmate"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.10.0",
+    "ethers": "^6.9.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.0"
+  },
+  "keywords": [
+    "cow-protocol",
+    "ethereum",
+    "foundry",
+    "anvil",
+    "offline",
+    "development"
+  ],
+  "author": "CoW Protocol Team",
+  "license": "MIT"
+}
