@@ -34,6 +34,9 @@
     "solady": "github:Vectorized/solady",
     "solmate": "github:transmissions11/solmate"
   },
+  "overrides": {
+    "ethers": "^6.9.0"
+  },
   "devDependencies": {
     "@types/jest": "^29.5.12",
     "@types/node": "^20.10.0",
